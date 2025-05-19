@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    {% load static %}
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NYC Restaurant Map</title>
+
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css"/>
+    
+    <!-- Leaflet JS -->
+    <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+
+    <!-- FontAwesome for custom icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css"/>
+
+    {% load static %}
+    <link rel="stylesheet" href="{% static 'landing/css/styles.css' %}">
+    <link rel="stylesheet" href="{% static 'home/map.css' %}">
+    <meta name="csrf-token" content="{{ csrf_token }}">
+</head>
+<body>
+    <div id="map" style="position: relative; top: 0; left: 0; height: 100%; width: 100%; padding-top: 300px;"></div>
+
+    <div id="side-modal" class="side-modal hidden">
+      <div class="modal-header">
+        <h2 id="modal-title">Restaurant Name</h2>
+        {% if is_customer %}
+        <button class="bookmark-btn" onclick="addBookmark()">★ Bookmark</button>
+        {% endif %}
+        <button onclick="closeModal()">×</button>
+      </div>
+      <div id="modal-content"></div>
+    </div>
+
+    <script>
+        // Initialize the Leaflet Map
+        var map = L.map('map').setView([40.7128, -74.0060], 12);
+    
+        // Add OpenStreetMap tile layer
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; OpenStreetMap contributors'
+        }).addTo(map);
+    
+        // Create a single GLOBAL layer for markers
+        window.markersLayer = L.layerGroup().addTo(map);
+    
+        // Function to create a custom FontAwesome dining icon
+        function getDiningIcon(color) {
+            return L.divIcon({
+                className: "custom-dining-marker",
+                html: `<div class="marker-icon" style="background-color: ${color};">
+                           <i class="fa-solid fa-utensils"></i>
+                       </div>`,
+                iconSize: [30, 30], // Adjust size for visibility
+                iconAnchor: [15, 30], // Align the marker properly
+                popupAnchor: [0, -30] // Adjusts popup positioning
+            });
+        }
+    
+
+        function closeModal() {
+          document.getElementById("side-modal").classList.remove("show");
+        }
+
+
+        let currentRestaurantId = null;
+
+        function showModal(feature) {
+            currentRestaurantId = feature.properties.id;
+            const name = feature.properties.name || "Unnamed Restaurant";
+            const cuisine = feature.properties.cuisine || "N/A";
+            const address = feature.properties.street || "N/A";
+            const rating = feature.properties.hygiene_rating || "";
+            const building = feature.properties.building || "";
+            const zipcode = feature.properties.zipcode || "";
+
+            const modal = document.getElementById("side-modal");
+            document.getElementById("modal-title").innerHTML = `
+                ${name}
+                <div style="font-size: 0.5em; margin-top: 4px;">
+                    <a href="#" onclick="window.parent.goToProfilePage(currentRestaurantId); return false;" style="color: #1a73e8; text-decoration: none;">
+                        View Profile →
+                    </a>
+                </div>
+            `;
+            document.getElementById("modal-content").innerHTML = `
+              <p><strong>Cuisine:</strong> ${cuisine}</p>
+              <p><strong>Address:</strong> ${building} ${address}, ${zipcode} </p>
+              <div style="margin-top: 10px;">
+                <strong>Hygiene Rating:</strong>
+                <div style="font-size: 1000%; line-height: 1.1; margin-top: 5px; text-align: center;">
+                  ${getLetterGrade(rating, true)}
+                </div>
+              </div>
+            `;
+
+            modal.classList.add("show");
+        }
+
+        async function addBookmark() {
+            if (!currentRestaurantId) return;
+
+            try {
+                const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content;
+                if (!csrfToken) {
+                    showToast('Session expired - please refresh the page');
+                    return;
+                }
+
+                const formData = new FormData();
+                formData.append('restaurant_id', currentRestaurantId);
+                formData.append('csrfmiddlewaretoken', csrfToken);
+
+                const response = await fetch('/bookmarks/', {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRFToken': csrfToken,
+                        'X-Requested-With': 'XMLHttpRequest'
+                    },
+                    body: formData,
+                    credentials: 'include'
+                });
+
+                if (!response.ok) {
+                    const error = await response.text();
+                    throw new Error(error);
+                }
+
+                const result = await response.json();
+                showToast(result.success ? 'Bookmark added!' : (result.error || 'Failed to bookmark'));
+                
+                if (result.success) {
+                    const btn = document.querySelector('.bookmark-btn');
+                    if (btn) btn.classList.add('bookmarked');
+                }
+
+                if (typeof window.parent.loadBookmarks === 'function') {
+                  window.parent.loadBookmarks();
+                }
+            } catch (error) {
+                console.error('Bookmark error:', error);
+                showToast('Error: Please try again');
+            }
+        }
+
+        function getCSRFToken() {
+            // Try to get from meta tag
+            const metaTag = document.querySelector('meta[name="csrf-token"]');
+            if (metaTag) return metaTag.content;
+            
+            // Fallback to cookie
+            const cookieValue = document.cookie
+                .split('; ')
+                .find(row => row.startsWith('csrftoken='))
+                ?.split('=')[1];
+            
+            return cookieValue || '';
+        }
+
+        function showToast(message) {
+            const toast = document.createElement('div');
+            toast.className = 'toast-notification';
+            toast.textContent = message;
+            document.body.appendChild(toast);
+            
+            setTimeout(() => {
+                toast.remove();
+            }, 3000);
+        }
+
+
+        // Function to determine marker color based on hygiene rating
+        function getColorByRating(rating) {
+            if (rating >= 28) return "#ff0000"; // Red for poor rating (8+)
+            else if (rating >= 14) return "#ffa500"; // Orange for average (5-7)
+            else return "#00cc00"; // Green for excellent (0-2)
+        }
+    
+
+        // Function to translate rating to letter grade
+        function getLetterGrade(rating, style = false) {
+          let grade = '';
+          let color = '';
+
+          if (rating >= 28) {
+            grade = 'C';
+            color = '#ff0000'; // Red
+          } else if (rating >= 14) {
+            grade = 'B';
+            color = '#ffa500'; // Orange/Yellow
+          } else {
+            grade = 'A';
+            color = '#00cc00'; // Green
+          }
+      
+          if (style) {
+            return `<span style="color: ${color}; font-weight: bold;">${grade}</span>`;
+          }
+      
+          return grade;
+        }
+
+        const MIN_MARKER_ZOOM = 1;
+
+        // Function to update markers dynamically without reloading the map GLOBAL
+        window.updateMarkers = function (data) {
+            console.log("🗺 Updating markers on the map...");
+    
+            // Clear old markers before adding new ones
+            window.markersLayer.clearLayers();
+
+            const bounds = map.getBounds();
+
+            const visibleFeatures = data.features.filter(feature => {
+                const coords = feature.geometry.coordinates;
+                const latlng = L.latLng(coords[1], coords[0]);
+                return bounds.contains(latlng);
+            });
+
+            if (visibleFeatures.length === 0) {
+                console.warn("⚠️ No visible features within bounds.");
+                return;
+            }
+    
+            if (!data.features || data.features.length === 0) {
+                console.warn("⚠️ No features found in response.");
+                return;
+            }
+    
+            // Add new markers based on GeoJSON data
+            L.geoJSON({ ...data, features: visibleFeatures }, {
+                onEachFeature: function (feature, layer) {
+                  layer.on('click', () => {
+                    showModal(feature);
+                  });
+                  
+                  const name = feature.properties.name || 'UNKNOWN';
+                  layer.bindTooltip(name, {
+                    permanent: false,   
+                    direction: 'top',   
+                    className: 'marker-tooltip',
+                    offset: L.point(0, -25)
+                  });
+                },
+                pointToLayer: function (feature, latlng) {
+                  const rating = feature.properties.hygiene_rating || 0;
+                  const color = getColorByRating(rating);
+                                
+                  const marker = L.marker(latlng, {
+                    icon: getDiningIcon(color)
+                  });
+              
+                  // ⬇️ Apply fade-in class after marker is added
+                  setTimeout(() => {
+                    const icon = marker.getElement();
+                    if (icon) icon.classList.add('fade-in');
+                  }, 0);
+              
+                  return marker;
+                }
+            }).addTo(window.markersLayer);
+    
+            console.log("✅ Markers updated successfully!");
+        };
+    
+
+        // Function to fetch data and update markers
+        function updateMapData() {
+            console.log("🔄 Fetching initial restaurant data...");
+            fetch('/api/restaurants/geojson/')
+                .then(response => response.json())
+                .then(data => {
+                    updateMarkers(data);
+                })
+                .catch(error => console.error('❌ Error loading GeoJSON:', error));
+        }
+    
+
+        // Reset to init state
+        window.resetFilters = function () {
+            // Fetch all restaurant data without filters
+            fetch('/api/restaurants/geojson/')
+                .then(response => response.json())
+                .then(data => {
+                    console.log("✅ Reset GeoJSON data received:", data);
+                    window.updateMarkers(data);
+
+                    if (window.parent && typeof window.parent.onMapResetComplete === "function") {
+                      window.parent.onMapResetComplete();
+                    }
+                })
+                .catch(error => console.error("❌ Error resetting map data:", error));
+        };
+
+
+        // Function to handle geocode search marker
+        window.dropGeocodeMarker = function (lat, lng) {
+            if (typeof lat === 'undefined' || typeof lng === 'undefined') {
+                console.warn("❌ globalLAT/globalLNG not set.");
+                return;
+            }
+        
+            const latlng = L.latLng(lat, lng);
+        
+            // Remove old geocode marker if it exists
+            if (window.geocodeMarker) {
+                map.removeLayer(window.geocodeMarker);
+            }
+        
+            // Create and add new geocode marker
+            window.geocodeMarker = L.marker(latlng, {
+                icon: L.divIcon({
+                    className: "custom-geocode-marker",
+                    html: `<div class="marker-icon" style="background-color: #1a73e8;">
+                               <i class="fa-solid fa-location-dot"></i>
+                           </div>`,
+                    iconSize: [30, 30],
+                    iconAnchor: [15, 30]
+                })
+            }).addTo(map);
+        
+            // Center and zoom the map
+            map.setView(latlng, 15);
+        
+            console.log("📍 Geocode marker placed at:", latlng);
+            updateMapData();
+        };
+
+        // Load initial data on page load
+        if (navigator.geolocation) {
+            navigator.geolocation.getCurrentPosition(
+                (position) => {
+                    const initLAT = position.coords.latitude;
+                    const initLNG = position.coords.longitude;
+                    dropGeocodeMarker(initLAT, initLNG);
+                },
+                (error) => {
+                    console.warn("⚠️ Geolocation failed, using fallback coordinates:", error);
+                    // Fallback to NYC
+                    const initLAT = 40.69455789521935;
+                    const initLNG = -73.9865872293045;
+                    dropGeocodeMarker(initLAT, initLNG);
+                },
+                { timeout: 5000 }
+            );
+        } else {
+            console.warn("⚠️ Geolocation not supported. Using fallback location.");
+            const initLAT = 40.69455789521935;
+            const initLNG = -73.9865872293045;
+            dropGeocodeMarker(initLAT, initLNG);
+        }
+    </script>
+  
+</body>
+</html>

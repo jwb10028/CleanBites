@@ -1,0 +1,613 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  {% load static %}
+  <meta charset="UTF-8">
+  <meta name="csrf-token" content="{{ csrf_token }}">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="referrer" content="strict-origin-when-cross-origin" />
+  <title>Inbox</title>
+  <link rel="stylesheet" href="{% static 'landing/css/styles.css' %}">
+  <link rel="stylesheet" href="{% static 'home/home.css' %}">
+  <link rel="stylesheet" href="{% static 'messages/messages.css' %}">
+  <style>
+    /* Notification badge styles - updated for better visibility */
+    .notification-badge {
+      position: relative;
+    }
+    
+    .notification-badge::after {
+      content: '';
+      position: absolute;
+      top: 0;
+      right: -8px;
+      width: 10px;
+      height: 10px;
+      background-color: #ff0000;
+      border-radius: 50%;
+      display: block;
+      z-index: 100;
+    }
+
+    /* Unread conversation style */
+    .unread-conversation {
+      font-weight: bold;
+    }
+    
+    .unread-icon {
+      color: #ff0000;
+      margin-left: 5px;
+      font-size: 14px;
+    }
+  </style>
+</head>
+<body style="background-color: #ffedd3;">
+
+  {% include 'components/header_nofilter.html' %}
+
+  <input type="hidden" id="userId" value="{{ user.id }}">
+  <input type="hidden" id="activeChatId" value="{% if active_chat %}{{ active_chat.id }}{% else %}{% endif %}">
+
+  <main class="content" style="padding-top: 75px;">
+    <div class="container p-0">
+  
+      <h1 class="h3 mb-3">Inbox</h1>
+      <div id="chat-container" style="height: 80vh; display: flex; flex-direction: column;">
+      <div class="card" style="height: 80vh; display: flex; flex-direction: column;">
+        <div class="row g-0" style="height: 80vh;">
+  
+          <!-- Left Panel: Conversations -->
+          <div class="col-12 col-lg-5 col-xl-3 border-end" style="border-right: 1px solid #dee2e6;">
+  
+            <!-- Header + New Message Button -->
+            <div class="d-flex justify-content-between align-items-center px-4 py-2 border-bottom">
+              <strong>Conversations</strong>
+              <button class="btn btn-sm btn-outline-primary" onclick="toggleNewMessageForm()">
+                <i class="fas fa-plus"></i>
+              </button>
+            </div>
+  
+            <!-- Conversation List -->
+            <div class="conversation-list">
+                {% for convo in conversations %}
+                  <div class="d-flex justify-content-between align-items-center" style="border-bottom: 1px solid #dedede; padding-bottom: 15px;">
+                    <a href="{% url 'chat' convo.id %}" class="list-group-item list-group-item-action border-0 {% if active_chat and convo.id == active_chat.id %}active{% endif %} {% if convo.has_unread %}unread-conversation{% endif %}" style="margin-top: 15px;">
+                      <div class="d-flex align-items-start" style="padding-left: 10px;">
+                        <img src="{{ convo.avatar_url }}" class="rounded-circle mr-1" width="40" height="40" alt="{{ convo.name }}">
+                        <div class="flex-grow-1 ml-3" style="padding-left: 5px; max-width: 200px; word-wrap: break-word; overflow-wrap: break-word; white-space: normal;">
+                          {{ convo.email }}
+                          {% if convo.has_unread %}
+                            <span class="unread-icon">✉️</span>
+                          {% endif %}
+                        </div>
+                      </div>
+                    </a>
+              
+                    <!-- Trash emoji as a delete button -->
+                    <form method="POST" action="{% url 'delete_conversation' convo.id %}" style="margin-left: 10px;">
+                      {% csrf_token %}
+                      <button type="submit" class="btn btn-link btn-sm" title="Delete" style="text-decoration: none; color: red;">
+                        🗑️
+                      </button>
+                    </form>
+                  </div>
+                {% empty %}
+                  <p class="text-muted text-center mt-3">No conversations yet.</p>
+                {% endfor %}
+            </div>
+            
+          </div>
+  
+          <!-- Right Panel: Messages -->
+          <div class="col-12 col-lg-8 col-xl-9 d-flex flex-column">
+  
+            <!-- New Message Form -->
+            <div id="newMessageForm" class="border-bottom px-4 py-3" style="display: none;">
+              <form method="POST" action="{% url 'send_message_generic' %}">
+                {% csrf_token %}
+                <div class="form-group mb-2">
+                  <label for="recipientEmail"><strong>To:</strong></label>
+                  <input type="email" class="form-control" id="recipientEmail" name="recipient" placeholder="Recipient email" required>
+                </div>
+                <div class="form-group mb-2">
+                  <textarea class="form-control" name="message" rows="3" placeholder="Type your message..." required></textarea>
+                </div>
+                <div class="text-right">
+                  <button type="submit" class="btn btn-primary">Send</button>
+                </div>
+              </form>
+            </div>
+  
+            <!-- Active Chat Header -->
+            {% if active_chat %}
+            <div class="py-2 px-4 border-bottom d-none d-lg-block">
+              <div class="d-flex align-items-center py-1">
+                <div class="position-relative">
+                  <img src="/static/images/avatar-placeholder.png" class="rounded-circle mr-1" width="40" height="40">
+                </div>
+                <div class="flex-grow-1 pl-3" style="padding-left: 5px;">
+                  <strong>{{ active_chat.email }}</strong>
+                  <div class="text-muted small" style="color: orange;"><em>Online</em></div>
+                </div>
+
+                <div style="position: absolute; top: 10px; right: 10px;">
+                  <button id="report-dm-btn" class="btn btn-danger btn-sm" data-partner-id="{{ active_chat.id }}">
+                    Report
+                 </button>
+                </div>
+
+              </div>
+            </div>
+            {% endif %}
+  
+            <!-- Messages Thread -->
+            <div class="flex-grow-1 overflow-auto chat-messages p-4" style="height: 500px;">
+              {% for message in messages %}
+              <div class="chat-message mb-4 d-flex {% if active_chat.id == message.sender_id %}justify-content-start{% else %}justify-content-end{% endif %}">
+                {% if active_chat.id == message.sender_id %}
+                <!-- Avatar on the left for active chat messages -->
+                <img src="/static/images/avatar-placeholder.png" class="rounded-circle mr-1" width="40" height="40">
+                {% else %}
+                {% endif %}
+                <div style="padding-left: 5px; padding-right: 5px;">
+                  <!-- Message bubble -->
+                  <div class="flex-shrink-1 rounded py-2 px-3 {% if active_chat.id == message.sender_id %}bg-light{% else %}bg-primary text-white{% endif %}" style="padding: 5px;">
+                    {{ message.decoded_message }}
+                  </div>
+                  <!-- Timestamp -->
+                  <div class="text-muted small mt-1 {% if active_chat.id == message.sender_id %}text-left{% else %}text-right{% endif %}">
+                    {{ message.sent_at }}
+                  </div>
+                </div>
+                {% if active_chat.id != message.sender_id %}
+                <!-- Avatar on the right for other messages -->
+                <img src="/static/images/avatar-placeholder.png" class="rounded-circle ml-1" width="40" height="40">
+                {% endif %}
+              </div>
+              {% empty %}
+              <p class="text-muted text-center">No messages yet.</p>
+              {% endfor %}
+            </div>
+  
+            <!-- Reply Box (Only if active chat selected) -->
+            {% if active_chat %}
+            <div class="flex-grow-0 py-3 px-4 border-top">
+              <form id="message-form" class="message-form" data-chat-id="{{ active_chat.id }}">
+                {% csrf_token %}
+                <div class="input-group">
+                  <input type="text" id="message-input" name="message" class="form-control" placeholder="Type your message..." required>
+                  <button class="btn btn-primary" type="submit">Send</button>
+                </div>
+              </form>
+            </div>
+            {% endif %}
+  
+          </div>
+        </div>
+      </div>
+      </div>
+  
+    </div>
+  </main>
+  
+  <!-- JS toggle for new message -->
+  <script>
+    function toggleNewMessageForm() {
+      const form = document.getElementById("newMessageForm");
+      form.style.display = (form.style.display === "none") ? "block" : "none";
+    }
+  </script>
+  
+  
+  
+
+  <script>    
+    function toggleDropdown() {
+      const dropdown = document.getElementById('profileDropdown');
+      dropdown.style.display = dropdown.style.display === 'flex' ? 'none' : 'flex';
+    }
+
+    
+    // Optional: Hide dropdown when clicking outside
+    window.addEventListener('click', function(e) {
+      const dropdown = document.getElementById('profileDropdown');
+      if (!e.target.closest('.profile-dropdown')) {
+        dropdown.style.display = 'none';
+      }
+    });   
+  </script>
+
+<script>
+  document.addEventListener("DOMContentLoaded", function() {
+      const reportDMBtn = document.getElementById("report-dm-btn");
+      if (reportDMBtn) {
+          reportDMBtn.addEventListener("click", function() {
+              if (!confirm("Are you sure you want to report this conversation?")) {
+                  return;
+              }
+              const partnerId = reportDMBtn.getAttribute("data-partner-id");
+              const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+              fetch("/report_dm/", {
+                  method: "POST",
+                  headers: {
+                      "Content-Type": "application/json",
+                      "X-CSRFToken": csrfToken
+                  },
+                  body: JSON.stringify({ partner_id: partnerId }),
+                  credentials: "include"
+              })
+              .then(response => response.json())
+              .then(data => {
+                  if (data.success) {
+                      alert("Conversation reported successfully.");
+                      reportDMBtn.disabled = true;
+                      reportDMBtn.textContent = "Reported";
+                  } else {
+                      alert("Error reporting conversation: " + (data.error || "Unknown error"));
+                  }
+              })
+              .catch(err => {
+                  console.error(err);
+                  alert("An error occurred. Please try again.");
+              });
+          });
+      }
+  });
+</script>
+
+<script>
+  async function pollMessages(chatUserId = null) {
+      try {
+          const response = await fetch(`/stream_messages/${chatUserId || ''}`);
+          const data = await response.json();
+
+          if (data.messages) {
+              const messagesContainer = document.querySelector(".chat-messages");
+              messagesContainer.innerHTML = ""; // Clear existing messages
+
+              data.messages.forEach((message) => {
+                  const userId = parseInt(document.getElementById("userId").value);
+                  const activeChatId = parseInt(document.getElementById("activeChatId").value);
+                  
+                  // Match the template logic: if active_chat.id (activeChatId) equals message.sender_id, 
+                  // it's a message FROM the chat partner TO the current user
+                  const isFromPartner = message.sender__id === activeChatId;
+                  
+                  const messageDiv = document.createElement("div");
+                  messageDiv.className = `chat-message mb-4 d-flex ${
+                      isFromPartner ? "justify-content-start" : "justify-content-end"
+                  }`;
+
+                  // Build HTML based on whether this is a message from the partner or from the current user
+                  let html = '';
+                  
+                  // For messages from partner, show avatar on left
+                  if (isFromPartner) {
+                      html += `<img src="/static/images/avatar-placeholder.png" class="rounded-circle mr-1" width="40" height="40">`;
+                  }
+                  
+                  // Message content
+                  html += `<div style="padding-left: 5px; padding-right: 5px;">
+                      <div class="flex-shrink-1 rounded py-2 px-3 ${
+                          isFromPartner ? "bg-light" : "bg-primary text-white"
+                      }" style="padding: 5px;">
+                          ${message.message}
+                      </div>
+                      <div class="text-muted small mt-1 ${
+                          isFromPartner ? "text-left" : "text-right"
+                      }">
+                          ${new Date(message.sent_at).toLocaleString()}
+                      </div>
+                  </div>`;
+                  
+                  // For messages from current user, show avatar on right
+                  if (!isFromPartner) {
+                      html += `<img src="/static/images/avatar-placeholder.png" class="rounded-circle ml-1" width="40" height="40">`;
+                  }
+                  
+                  messageDiv.innerHTML = html;
+                  messagesContainer.appendChild(messageDiv);
+              });
+              
+              // Scroll to the bottom of the messages container
+              messagesContainer.scrollTop = messagesContainer.scrollHeight;
+          }
+      } catch (error) {
+          console.error("Error polling messages:", error);
+      }
+  }
+  
+  // Poll every 5 seconds
+  setInterval(() => {
+      const activeChatId = document.getElementById("activeChatId").value || null;
+      if (activeChatId) {
+          pollMessages(activeChatId);
+      }
+  }, 5000);
+</script>
+
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    // Get the message form
+    const messageForm = document.getElementById('message-form');
+    
+    if (messageForm) {
+      messageForm.addEventListener('submit', async function(e) {
+        e.preventDefault(); // Prevent form from submitting normally
+        
+        const chatId = this.getAttribute('data-chat-id');
+        const messageInput = document.getElementById('message-input');
+        const message = messageInput.value.trim();
+        const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+        
+        if (!message) return; // Don't send empty messages
+        
+        try {
+          // Send message via fetch API
+          const response = await fetch(`/inbox/send/${chatId}/`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/x-www-form-urlencoded',
+              'X-CSRFToken': csrfToken
+            },
+            body: `message=${encodeURIComponent(message)}`
+          });
+          
+          if (response.ok) {
+            // Clear the input field
+            messageInput.value = '';
+            
+            // Immediately poll for messages to update the chat
+            const activeChatId = document.getElementById("activeChatId").value;
+            if (activeChatId) {
+              pollMessages(activeChatId);
+            }
+          } else {
+            console.error('Error sending message:', response.statusText);
+          }
+        } catch (error) {
+          console.error('Error sending message:', error);
+        }
+      });
+    }
+  });
+</script>
+
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    // Get the new message form
+    const newMessageForm = document.getElementById('new-message-form');
+    const statusDiv = document.getElementById('new-message-status');
+    
+    if (newMessageForm) {
+      newMessageForm.addEventListener('submit', async function(e) {
+        e.preventDefault(); // Prevent form from submitting normally
+        
+        const recipientEmail = document.getElementById('recipientEmail').value;
+        const messageText = document.getElementById('new-message-text').value;
+        const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+        
+        if (!recipientEmail || !messageText.trim()) return; // Don't send if fields are empty
+        
+        try {
+          // Show loading message
+          statusDiv.textContent = "Sending...";
+          statusDiv.style.display = "block";
+          statusDiv.className = "alert alert-info mt-2";
+          
+          // Send message via fetch API
+          const response = await fetch("{% url 'send_message_generic' %}", {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/x-www-form-urlencoded',
+              'X-CSRFToken': csrfToken,
+              'X-Requested-With': 'XMLHttpRequest'
+            },
+            body: `recipient=${encodeURIComponent(recipientEmail)}&message=${encodeURIComponent(messageText)}`
+          });
+          
+          if (response.ok) {
+            const data = await response.json();
+            
+            // Clear the form
+            newMessageForm.reset();
+            
+            // Show success message
+            statusDiv.textContent = "Message sent successfully!";
+            statusDiv.className = "alert alert-success mt-2";
+            
+            // Close the form after a delay
+            setTimeout(() => {
+              document.getElementById('newMessageForm').style.display = 'none';
+              statusDiv.style.display = 'none';
+              
+              // If chat ID was returned, redirect to that chat
+              if (data.chat_user_id) {
+                window.location.href = `/inbox/chat/${data.chat_user_id}/`;
+              } else {
+                // Otherwise refresh the conversation list
+                refreshConversationList();
+              }
+            }, 1500);
+          } else {
+            const errorData = await response.json();
+            statusDiv.textContent = `Error: ${errorData.error || "Failed to send message"}`;
+            statusDiv.className = "alert alert-danger mt-2";
+          }
+        } catch (error) {
+          console.error('Error sending message:', error);
+          statusDiv.textContent = "Error sending message. Please try again.";
+          statusDiv.className = "alert alert-danger mt-2";
+        }
+      });
+    }
+    
+    // Function to refresh the conversation list without reloading the page
+    async function refreshConversationList() {
+      try {
+        const response = await fetch('/get_conversations/', {
+          method: 'GET',
+          headers: {
+            'X-Requested-With': 'XMLHttpRequest'
+          }
+        });
+        
+        if (response.ok) {
+          const data = await response.json();
+          const conversationList = document.querySelector('.conversation-list');
+          
+          if (conversationList && data.conversations) {
+            // Clear the current list
+            conversationList.innerHTML = '';
+            
+            // Add the updated conversations
+            data.conversations.forEach(convo => {
+              const unreadClass = convo.has_unread ? 'unread-conversation' : '';
+              const unreadIcon = convo.has_unread ? '<span class="unread-icon">✉️</span>' : '';
+              const activeClass = (window.activeChatId && convo.id == window.activeChatId) ? 'active' : '';
+              
+              const conversationHtml = `
+                <div class="d-flex justify-content-between align-items-center" style="border-bottom: 1px solid #dedede; padding-bottom: 15px;">
+                  <a href="/inbox/chat/${convo.id}/" class="list-group-item list-group-item-action border-0 ${activeClass} ${unreadClass}" style="margin-top: 15px;">
+                    <div class="d-flex align-items-start" style="padding-left: 10px;">
+                      <img src="${convo.avatar_url}" class="rounded-circle mr-1" width="40" height="40" alt="${convo.name}">
+                      <div class="flex-grow-1 ml-3" style="padding-left: 5px; max-width: 200px; word-wrap: break-word; overflow-wrap: break-word; white-space: normal;">
+                        ${convo.email}
+                        ${unreadIcon}
+                      </div>
+                    </div>
+                  </a>
+                  
+                  <form method="POST" action="/inbox/delete/${convo.id}/" style="margin-left: 10px;">
+                    <input type="hidden" name="csrfmiddlewaretoken" value="${csrfToken}">
+                    <button type="submit" class="btn btn-link btn-sm" title="Delete" style="text-decoration: none; color: red;">
+                      🗑️
+                    </button>
+                  </form>
+                </div>
+              `;
+              
+              conversationList.innerHTML += conversationHtml;
+            });
+          }
+        }
+      } catch (error) {
+        console.error('Error refreshing conversations:', error);
+      }
+    }
+  });
+</script>
+
+<script>
+  async function pollForNewConversations() {
+    try {
+      const response = await fetch('/get_conversations/', {
+        method: 'GET',
+        headers: {
+          'X-Requested-With': 'XMLHttpRequest'
+        }
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        const conversationList = document.querySelector('.conversation-list');
+        
+        if (conversationList) {
+          // Get current conversations in the DOM
+          const currentConvoElements = document.querySelectorAll('.conversation-list .d-flex');
+          const currentConvoIds = Array.from(
+            document.querySelectorAll('.conversation-list a[href^="/inbox/chat/"]')
+          ).map(a => parseInt(a.getAttribute('href').split('/').filter(Boolean).pop()));
+          
+          // If there are no conversations from the server but we have some in the DOM,
+          // or if some conversations in the DOM are no longer in the server response,
+          // we need to remove them
+          const serverConvoIds = data.conversations.map(convo => convo.id);
+          
+          // Check for conversations that should be removed (they exist in DOM but not in server response)
+          const removedConvoIds = currentConvoIds.filter(id => !serverConvoIds.includes(id));
+          if (removedConvoIds.length > 0) {
+            removedConvoIds.forEach(id => {
+              const convoElement = document.querySelector(`.conversation-list a[href$="/${id}/"]`);
+              if (convoElement) {
+                const parentDiv = convoElement.closest('.d-flex');
+                if (parentDiv) {
+                  parentDiv.remove();
+                }
+              }
+            });
+            
+            // If we're currently viewing a conversation that was removed, redirect to inbox
+            const activeChatId = window.activeChatId ? parseInt(window.activeChatId) : null;
+            if (activeChatId && removedConvoIds.includes(activeChatId)) {
+              window.location.href = '/inbox/';
+              return; // Stop execution since we're redirecting
+            }
+          }
+          
+          // Check if there are new conversations to add
+          const newConvoIds = serverConvoIds.filter(id => !currentConvoIds.includes(id));
+          const hasChanges = newConvoIds.length > 0 || removedConvoIds.length > 0;
+          
+          // Only update the DOM if there are changes (new conversations or removed ones)
+          if (hasChanges) {
+            // Clear the current list
+            conversationList.innerHTML = '';
+            
+            if (data.conversations.length === 0) {
+              // Show a message when there are no conversations
+              conversationList.innerHTML = '<p class="text-muted text-center mt-3">No conversations yet.</p>';
+            } else {
+              // Add all conversations from the server
+              data.conversations.forEach(convo => {
+                const unreadClass = convo.has_unread ? 'unread-conversation' : '';
+                const unreadIcon = convo.has_unread ? '<span class="unread-icon">✉️</span>' : '';
+                const activeClass = (window.activeChatId && convo.id == window.activeChatId) ? 'active' : '';
+                
+                const conversationHtml = `
+                  <div class="d-flex justify-content-between align-items-center" style="border-bottom: 1px solid #dedede; padding-bottom: 15px;">
+                    <a href="/inbox/${convo.id}/" class="list-group-item list-group-item-action border-0 ${activeClass} ${unreadClass}" style="margin-top: 15px;">
+                      <div class="d-flex align-items-start" style="padding-left: 10px;">
+                        <img src="${convo.avatar_url}" class="rounded-circle mr-1" width="40" height="40" alt="${convo.name}">
+                        <div class="flex-grow-1 ml-3" style="padding-left: 5px; max-width: 200px; word-wrap: break-word; overflow-wrap: break-word; white-space: normal;">
+                          ${convo.email}
+                          ${unreadIcon}
+                        </div>
+                      </div>
+                    </a>
+                    
+                    <form method="POST" action="/inbox/delete/${convo.id}/" style="margin-left: 10px;">
+                      <input type="hidden" name="csrfmiddlewaretoken" value="${document.querySelector('[name=csrfmiddlewaretoken]').value}">
+                      <button type="submit" class="btn btn-link btn-sm" title="Delete" style="text-decoration: none; color: red;">
+                        🗑️
+                      </button>
+                    </form>
+                  </div>
+                `;
+                
+                conversationList.innerHTML += conversationHtml;
+              });
+            }
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Error polling for new conversations:', error);
+    }
+  }
+  
+  // Poll every 10 seconds for new conversations
+  document.addEventListener('DOMContentLoaded', function() {
+    // Set the initial activeChatId in the window object
+    window.activeChatId = document.getElementById("activeChatId").value || null;
+    
+    // Start polling
+    setInterval(pollForNewConversations, 10000); // 10 seconds
+    
+    // Initial poll to set up the conversation list
+    pollForNewConversations();
+  });
+</script>
+  
+</body>
+</html>

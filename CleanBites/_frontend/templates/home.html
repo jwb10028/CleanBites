@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  {% load static %}
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="referrer" content="strict-origin-when-cross-origin" />
+  <title>Home</title>
+  <link rel="stylesheet" href="{% static 'landing/css/styles.css' %}">
+  <link rel="stylesheet" href="{% static 'home/home.css' %}">
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/noUiSlider/15.6.1/nouislider.min.css" rel="stylesheet">
+  <style>
+    /* Notification badge styles - updated for better visibility */
+    .notification-badge {
+      position: relative;
+    }
+    
+    .notification-badge::after {
+      content: '';
+      position: absolute;
+      top: 0;
+      right: -8px;
+      width: 10px;
+      height: 10px;
+      background-color: #ff0000;
+      border-radius: 50%;
+      display: block;
+      z-index: 100;
+    }
+    
+    /* Avatar with notification ring for unread messages */
+    .avatar-container {
+      position: relative;
+      display: inline-block;
+    }
+    
+    .avatar-container.unread::after {
+      content: '';
+      position: absolute;
+      top: -3px;
+      left: -3px;
+      right: -3px;
+      bottom: -3px;
+      border-radius: 50%;
+      border: 2px solid #ff3b30; /* Apple-style red notification color */
+      z-index: 1;
+    }
+  </style>
+</head>
+<body>
+  <script>
+    window.goToProfilePage = function (restaurantId) {
+      if (!restaurantId) return;
+      const url = `/restaurant/${restaurantId}/`;
+      window.location.href = url; // full-page redirect
+    };
+  </script>
+  {% include 'components/header_nofilter.html' %}
+  
+  <main>
+    {% include 'components/sidebar.html' %}
+    {% include 'components/bookmarks.html' %}
+    
+
+    {% include 'components/recent_violations.html' %}
+    
+    <div id="map-container">
+      <iframe id="map-frame" src="/mapdynamic/"></iframe>
+      <div id="map-loading-spinner" style="display: none;">
+        <div class="spinner"></div>
+      </div>
+    </div>
+  </main>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/noUiSlider/15.6.1/nouislider.min.js"></script>
+  <script>    
+    window.globalLAT = 40.69455789521935;
+    window.globalLNG = -73.9865872293045;
+    
+
+
+    async function getCurrentGeocode(address) {
+      const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(address)}`;
+
+      try {
+        const response = await fetch(url);
+        const data = await response.json();
+      
+        if (data.length > 0) {
+          const { lat, lon } = data[0];
+          window.globalLAT = parseFloat(lat);
+          window.globalLNG = parseFloat(lon);
+          console.log("✅ Updated global location:", window.globalLAT, window.globalLNG);
+        } else {
+          console.warn("⚠️ No results found for address.");
+        }
+      } catch (error) {
+        console.error("❌ Error fetching geocode:", error);
+      }
+    }
+
+
+    async function submitGeocode() {
+      const address = document.getElementById('geocode-address').value;
+      if (address.trim() === "") {
+        alert("Please enter a valid address.");
+        return;
+      }
+    
+      try {
+        await getCurrentGeocode(address);
+      
+        // ✅ Success
+        document.getElementById('geocode-status').textContent = '✅';
+      
+        if (window.map) {
+          map.setView([window.globalLAT, window.globalLNG], 12);
+        }
+      
+        // Clear status after 3 seconds
+        setTimeout(() => {
+          document.getElementById('geocode-status').textContent = '';
+        }, 3000);
+      
+      } catch (error) {
+        // ❌ Failure
+        console.error("Geocoding failed:", error);
+        document.getElementById('geocode-status').textContent = '❌';
+      
+        setTimeout(() => {
+          document.getElementById('geocode-status').textContent = '';
+        }, 3000);
+      }
+    }
+    
+
+    window.onMapResetComplete = function () {
+      document.getElementById('map-loading-spinner').style.display = 'none';
+    };
+    
+
+    function toggleDropdown() {
+      const dropdown = document.getElementById('profileDropdown');
+      dropdown.style.display = dropdown.style.display === 'flex' ? 'none' : 'flex';
+    }
+
+    
+    // Optional: Hide dropdown when clicking outside
+    window.addEventListener('click', function(e) {
+      const dropdown = document.getElementById('profileDropdown');
+      if (!e.target.closest('.profile-dropdown')) {
+        dropdown.style.display = 'none';
+      }
+    });
+
+    function performSearch() {
+      const name = document.getElementById('search-name').value;
+      const checkedRatings = Array.from(document.querySelectorAll('input[name="ratings"]:checked'))
+                              .map(el => el.value);
+      // create a comma-separated string, e.g. "A,B,C"
+      const rating = checkedRatings.join(',');
+      const cuisine = document.getElementById('search-cuisine').value;
+      const distance = document.getElementById('search-distance').value;
+
+      const lat = typeof window.globalLAT !== 'undefined' ? window.globalLAT : 40.69455789521935;
+      const lng = typeof window.globalLNG !== 'undefined' ? window.globalLNG : -73.9865872293045;
+
+      const params = new URLSearchParams({
+        lat: lat,
+        lng: lng,
+        distance: distance,
+        name: name,
+        rating: rating,
+        cuisine: cuisine
+      });
+
+      const apiUrl = `/api/restaurants/geojson/?${params.toString()}`;
+      console.log("📡 Sending API request to:", apiUrl);
+
+      document.getElementById('map-loading-spinner').style.display = 'flex';
+
+      fetch(apiUrl)
+        .then(response => response.json())
+        .then(data => {
+            // Get the iframe's contentWindow and pass data
+            const mapFrame = document.getElementById("map-frame").contentWindow;
+            if (mapFrame && mapFrame.updateMarkers) {
+                mapFrame.updateMarkers(data);
+            } else {
+                console.error("❌ updateMarkers is not accessible in iframe!");
+            }
+        })
+        .catch(error => console.error('❌ Error fetching restaurant data:', error))
+        .finally(() => {
+          document.getElementById('map-loading-spinner').style.display = 'none';
+        });
+    }
+
+
+    document.getElementById('search-form').addEventListener('submit', function (e) {
+      e.preventDefault(); 
+      performSearch();    
+    }); 
+  </script>
+
+</body>
+</html>

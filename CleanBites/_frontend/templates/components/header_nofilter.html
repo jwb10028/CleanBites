@@ -1,0 +1,160 @@
+{% load static %}
+<link rel="stylesheet" href="{% static 'landing/css/styles.css' %}">
+<link rel="stylesheet" href="{% static 'home/home.css' %}">
+<link href="https://cdnjs.cloudflare.com/ajax/libs/noUiSlider/15.6.1/nouislider.min.css" rel="stylesheet">
+<style>
+    /* Notification badge styles - updated for better visibility */
+    .notification-badge {
+      position: relative;
+    }
+    
+    .notification-badge::after {
+      content: '';
+      position: absolute;
+      top: 0;
+      right: -8px;
+      width: 10px;
+      height: 10px;
+      background-color: #ff0000;
+      border-radius: 50%;
+      display: block;
+      z-index: 100;
+    }
+    
+    /* Avatar with notification ring for unread messages */
+    .avatar-container {
+      position: relative;
+      display: inline-block;
+    }
+    
+    .avatar-container.unread::after {
+      content: '';
+      position: absolute;
+      top: -3px;
+      left: -3px;
+      right: -3px;
+      bottom: -3px;
+      border-radius: 50%;
+      border: 2px solid #ff3b30; /* Apple-style red notification color */
+      z-index: 1;
+    }
+</style>
+
+<header class="apple-navbar">  
+    <div class="navbar-left">
+      <a href="{% url 'home' %}">
+        <img src="{% static 'images/logo.png' %}" style="width: auto; height: 40px; max-width: 100%; display: block;">
+      </a>
+    </div>
+
+    <div class="navbar-center position-relative" style="flex-grow: 1; max-width: 500px; margin: 0 auto;">
+      <form id="global-search-form" action="/search/" method="get" class="d-flex position-relative">
+        <input
+          type="text"
+          name="q"
+          id="global-search-input"
+          class="form-control me-2"
+          placeholder="Search customers or restaurants..."
+          aria-label="Global Search"
+          autocomplete="off"
+        >
+      </form>
+    
+      <!-- 🔍 Suggestions dropdown -->
+      <div
+        id="search-suggestions"
+        class="list-group position-absolute w-100 mt-1 shadow-sm"
+        style="z-index: 1000; display: none;"
+      ></div>
+    </div>
+
+    <div class="navbar-right">
+      <span class="username" style="color: rgb(231, 142, 0);">{{ user.username }}</span>
+      <div class="profile-dropdown">
+        <div class="avatar-container {% if has_unread_messages %}unread{% endif %}" onclick="toggleDropdown()">
+          <div class="avatar">
+            <!-- Placeholder avatar, WILL replace with user's profile image -->
+            <img src="{% static 'images/avatar-placeholder.png' %}" alt="Profile" />
+          </div>
+        </div>
+        <div class="dropdown-menu" id="profileDropdown">
+          <!-- WILL route HERE to user/restaurant profile page -->
+          <a href="/profile/{{ user.username }}/" class="dropdown-item">Profile</a>
+          <a href="/inbox/" class="dropdown-item {% if has_unread_messages %}notification-badge{% endif %}">Messages {% if has_unread_messages %}<span style="color: red; font-weight: bold;">(New)</span>{% endif %}</a>
+          <a href="/settings/" class="dropdown-item">Settings</a>
+          <form method="POST" action="{% url 'logout' %}">
+            {% csrf_token %}
+            <button type="submit" class="dropdown-item">Logout</button>
+          </form>
+        </div>
+      </div>
+    </div>    
+</header>
+
+<script>
+  function toggleDropdown() {
+    const dropdown = document.getElementById('profileDropdown');
+    dropdown.style.display = dropdown.style.display === 'flex' ? 'none' : 'flex';
+  }
+  
+  document.addEventListener('DOMContentLoaded', () => {
+    const input = document.getElementById('global-search-input');
+    const suggestions = document.getElementById('search-suggestions');
+  
+    let timeout = null;
+
+    // Absolutely block Enter key behavior
+    input.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        return false;
+      }
+    });
+  
+    input.addEventListener('input', () => {
+      clearTimeout(timeout);
+      const query = input.value.trim();
+  
+      if (!query) {
+        suggestions.style.display = 'none';
+        suggestions.innerHTML = '';
+        return;
+      }
+  
+      timeout = setTimeout(() => {
+        fetch(`/global-search/?q=${encodeURIComponent(query)}`)
+          .then(res => res.json())
+          .then(data => {
+            suggestions.innerHTML = '';
+            suggestions.style.display = 'block';
+  
+            if (!data.results || data.results.length === 0) {
+              suggestions.innerHTML = '<div class="list-group-item text-muted">No matches found</div>';
+              return;
+            }
+  
+            data.results.forEach(item => {
+              const link = document.createElement('a');
+              link.href = item.url;
+              link.className = 'list-group-item list-group-item-action';
+              link.textContent = item.label;
+              suggestions.appendChild(link);
+            });
+          })
+          .catch(err => {
+            console.error('Search error:', err);
+            suggestions.innerHTML = '<div class="list-group-item text-danger">Error loading results</div>';
+            suggestions.style.display = 'block';
+          });
+      }, 300); // debounce to reduce server load
+    });
+  
+    // Hide dropdown on outside click
+    document.addEventListener('click', (e) => {
+      if (!suggestions.contains(e.target) && e.target !== input) {
+        suggestions.style.display = 'none';
+      }
+    });
+  });
+</script>
+  

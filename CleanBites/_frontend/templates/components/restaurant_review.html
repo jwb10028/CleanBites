@@ -1,0 +1,253 @@
+<head><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+  <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+</head>
+
+<div class="reviews-section">
+    <h2>Recent Reviews for {{ restaurant.name }}</h2>
+    {% if reviews %}
+    <div class="scrollable-reviews">
+        <ul class="review-list">
+          {% for comment in reviews %}
+          <li class="review">
+            <div class="review-main">
+              <div class="review-content">
+                <span class="review-title">{{ comment.decoded_title }}</span>
+                <div class="review-restaurant">
+                  <a href="{% url 'user_profile' comment.commenter.username %}" class="restaurant-name">{{ comment.commenter.username }}</a>
+                </div>
+                <span class="review-rating">
+                  Rating:
+                  {% for i in "12345" %}
+                    <i class="fa-star {% if comment.rating|add:'0' >= i|add:'0' %}fas text-yellow{% else %}far{% endif %}"></i>
+                  {% endfor %}
+                </span>
+              
+                <span class="review-health">
+                  Health:
+                  {% for i in "12345" %}
+                    <i class="fa-star {% if comment.health_rating|add:'0' >= i|add:'0' %}fas text-green{% else %}far{% endif %}"></i>
+                  {% endfor %}
+                </span>
+            
+                <span class="review-date">{{ comment.posted_at|date:"F j, Y" }}</span>
+              <div>
+                <p class="review-text">{{ comment.decoded_comment }}</p>
+              </div>
+              <!-- Report button styled as a Bootstrap button and aligned to the right -->
+              <div class="review-actions" style="margin-left: 20px;">
+                <button class="btn btn-outline-success btn-sm karma-btn" 
+                    data-comment-id="{{ comment.id }}" 
+                    data-customer-id="{{ comment.commenter.id }}">
+                  <i class="fas fa-thumbs-up"></i> <span class="karma-count">{{ comment.karma }}</span>
+                </button>
+                {% if comment.replies.all %}
+                <button onclick="toggleReplies('replies-{{ comment.id }}', this)" class="btn btn-outline-primary btn-sm ml-2">
+                  Show Replies
+                </button>
+              {% else %}
+                <button onclick="toggleReplies('replies-{{ comment.id }}', this)" class="btn btn-outline-primary btn-sm ml-2">
+                  Reply
+                </button>
+              {% endif %}
+              {% if comment.flagged %}
+                <button class="btn btn-secondary btn-sm" disabled>Reported</button>
+              {% else %}
+                <button class="btn btn-danger btn-sm report-comment-btn" data-comment-id="{{ comment.id }}">
+                  Report
+                </button>
+              {% endif %}
+              </div>
+            </div>
+          
+            <ul id="replies-{{ comment.id }}" class="reply-list mt-2">
+              {% for reply in comment.replies.all %}
+                <li class="reply">
+                  <a href="{% url 'user_profile' comment.commenter.username %}">{{ reply.commenter.username }}</a>
+                  <span class="reply-date">({{ reply.posted_at|date:"F j, Y" }})</span>
+                  <button class="btn btn-outline-success btn-sm karma-btn" 
+                    data-comment-id="{{ reply.id }}" 
+                    data-customer-id="{{ reply.commenter.id }}">
+                    <i class="fas fa-thumbs-up"></i> <span class="karma-count">{{ reply.karma }}</span>
+                  </button>
+
+                  <p class="reply-text">{{ reply.comment }}</p>
+                  
+                </li>
+              {% endfor %}
+          
+              <form method="POST" action="{% url 'post_reply' %}" class="reply-form mt-2">
+                {% csrf_token %}
+                <input type="hidden" name="parent_id" value="{{ comment.id }}">
+                <input type="hidden" name="restaurant_id" value="{{ restaurant.id }}">
+                <textarea name="comment" placeholder="Write your reply..." rows="2" class="form-control mb-2"></textarea>
+                <button type="submit" class="btn btn-success btn-sm">Post Reply</button>
+              </form>
+            </ul>
+            </div>
+          </li>
+          {% endfor %}
+        </ul>
+    </div>
+    {% else %}
+      <p>No reviews yet for {{ restaurant.name }}.</p>
+    {% endif %}
+</div>
+  
+<style>
+
+.review-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+
+.review-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  font-size: 0.9rem;
+  color: #555;
+  margin-bottom: 8px;
+}
+
+.review-title {
+  font-size: 1.2rem;
+  font-weight: 600;
+  margin-bottom: 6px;
+  color: #222;
+  margin-left: 5px; 
+}
+
+.review-text {
+  font-size: 1rem;
+  line-height: 1.6;
+  color: #333;
+  margin-left: 10px; 
+}
+.text-yellow {
+  color: #f5b301;
+}
+.text-green {
+  color: #28a745;
+}
+.scrollable-reviews {
+  height: 400px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding-right: 8px;
+  margin-bottom: 20px;
+  border: 2px solid #eee;
+  position: relative;
+  overflow-anchor: none;
+}
+
+.review-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.review {
+  border-bottom: 1px solid #ddd;
+  padding: 16px 0;
+  display: flex;
+  flex-direction: column;
+  margin-left: 5px; 
+}
+
+
+.review-main {
+  display: flex;
+  flex-direction: column;
+  margin-left: 5px; 
+  
+}
+
+.review-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 8px;
+}
+
+.reply-list {
+  list-style: none;
+  padding-left: 30px;
+  margin-top: 12px;
+  display: none;
+}
+
+.reply {
+  background-color: #f9f9f9;
+  border-left: 3px solid #ccc;
+  padding: 10px;
+  margin-bottom: 8px;
+  border-radius: 4px;
+}
+
+.reply-text {
+  margin-top: 4px;
+  font-size: 0.95rem;
+  color: #444;
+}
+
+.reply-date {
+  font-size: 0.8rem;
+  color: #888;
+  margin-left: 4px;
+}
+
+.reply-form textarea {
+  resize: vertical;
+  max-height: 100px;
+}
+
+.review, .review-main, .reply-list, .reply-form {
+  margin-bottom: 0;
+}
+</style>
+<script>
+const CURRENT_CUSTOMER_ID = {{ current_customer.id|default:"null"}};
+console.log(CURRENT_CUSTOMER_ID)
+  // Hide all reply lists on page load
+  window.addEventListener('DOMContentLoaded', () => {
+    document.querySelectorAll('.reply-list').forEach(el => el.style.display = 'none');
+  });
+
+  function toggleReplies(id, btn) {
+    const el = document.getElementById(id);
+    const isHidden = el.style.display === "none";
+    el.style.display = isHidden ? "block" : "none";
+    btn.textContent = isHidden ? "Hide Replies" : "Reply";
+  }
+  document.addEventListener('DOMContentLoaded', function () {
+  document.querySelectorAll('.karma-btn').forEach(function (button) {
+    button.addEventListener('click', function () {
+      const commentId = this.dataset.commentId;
+      const customerId = CURRENT_CUSTOMER_ID;
+      const karmaCountEl = this.querySelector('.karma-count');
+
+      fetch("{% url 'toggle_karma' %}", {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRFToken': '{{ csrf_token }}',
+        },
+        body: JSON.stringify({ comment_id: commentId, customer_id: customerId })
+      })
+        .then(response => response.json())
+        .then(data => {
+          if (data.success) {
+            karmaCountEl.textContent = data.karma;
+          } else {
+            alert('Failed to update karma.');
+          }
+        })
+        .catch(error => {
+          console.error('Error:', error);
+        });
+    });
+  });
+});
+
+</script>

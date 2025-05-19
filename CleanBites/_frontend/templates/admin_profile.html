@@ -1,0 +1,217 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  {% csrf_token %}
+  <meta name="csrf-token" content="{{ csrf_token }}">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Moderator Profile - {{ moderator.first_name }} {{ moderator.last_name }}</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.5/dist/css/bootstrap.min.css" rel="stylesheet" crossorigin="anonymous">
+  <style>
+    html, body {
+       margin: 0;
+       padding: 0;
+       height: 100%;
+       overflow-y: auto;
+       background-color: #ffedd3;
+    }
+    h1, h2 {
+       color: #000;
+       margin-bottom: 20px;
+    }
+    .main-body {
+       padding: 15px;
+    }
+  </style>
+</head>
+<body>
+  {% include 'components/header_nofilter.html' %}
+  <div class="container" style="padding-top: 150px; background-color: #ffedd3;">
+    <div class="main-body">
+      <header class="mb-4">
+        <h1>{{ moderator.username }}</h1>
+      </header>
+      
+      <!-- Flagged Comments Card -->
+      <div class="card mb-4">
+        <div class="card-body">
+          <h2 class="card-title">Flagged Comments</h2>
+          {% if flagged_comments %}
+          <table class="table table-bordered table-striped">
+            <thead>
+              <tr>
+                <th>Commenter</th>
+                <th>Comment</th>
+                <th>Posted at</th>
+                <th>Flagged by</th>
+                <th>Action</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for comment in flagged_comments %}
+              <tr>
+                <td>
+                  <a href="{% url 'user_profile' comment.commenter.username %}">
+                    {{ comment.commenter.username }}
+                  </a>
+                </td>
+                <td>{{ comment.decoded_comment }}</td>
+                <td>{{ comment.posted_at }}</td>
+                <td>{{ comment.flagged_by.username }}</td>
+                <td>
+                  <button type="button" class="btn btn-outline-danger deactivateBtn" data-userid="{{ comment.commenter.id }}">
+                    Deactivate/Suspend
+                  </button>
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+          {% else %}
+          <p>No flagged comments.</p>
+          {% endif %}
+        </div>
+      </div>
+  
+      <!-- Flagged Direct Messages Card -->
+      <div class="card mb-4">
+        <div class="card-body">
+          <h2 class="card-title">Flagged Direct Messages</h2>
+          {% if flagged_dms %}
+          <table class="table table-bordered table-striped">
+            <thead>
+              <tr>
+                <th>Sender</th>
+                <th>Message</th>
+                <th>Sent at</th>
+                <th>Flagged by</th>
+                <th>Action</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for dm in flagged_dms %}
+              <tr>
+                <td>
+                  <a href="{% url 'user_profile' dm.sender.username %}">
+                    {{ dm.sender.username }}
+                  </a>
+                </td>
+                <td>{{ dm.decoded_message }}</td>
+                <td>{{ dm.sent_at }}</td>
+                <td>{{ dm.flagged_by.username }}</td>
+                <td>
+                  <button type="button" class="btn btn-outline-danger deactivateBtn" data-userid="{{ dm.sender.id }}">
+                    Deactivate
+                  </button>
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+          {% else %}
+          <p>No flagged direct messages.</p>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <!-- Bootstrap Modal for deactivation/suspension -->
+  <div class="modal fade" id="deactivateModal" tabindex="-1" aria-labelledby="deactivateModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="deactivateModalLabel">Suspend or Deactivate User</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <form id="deactivateForm" method="post" action="">
+            {% csrf_token %}
+            <input type="hidden" name="user_id" id="modalUserId" value="">
+
+            <!-- choose action -->
+            <div class="mb-3">
+              <label class="form-label">Action</label>
+              <select id="actionSelect" name="action" class="form-select" required>
+                <option value="" disabled selected>— Select —</option>
+                <option value="suspend">Suspend</option>
+                <option value="deactivate">Deactivate Permanently</option>
+              </select>
+            </div>
+
+            <!-- only shown when “Suspend” is picked -->
+            <div class="mb-3" id="suspendDateGroup" style="display: none;">
+              <label for="deactivated_until" class="form-label">Suspend Until</label>
+              <input
+                type="date"
+                id="deactivated_until"
+                name="deactivated_until"
+                class="form-control"
+                placeholder="YYYY‑MM‑DD"
+              />
+            </div>
+
+            <div class="mb-3">
+              <label for="deactivation_reason" class="form-label">Reason</label>
+              <textarea
+                name="deactivation_reason"
+                id="deactivation_reason"
+                class="form-control"
+                rows="4"
+                placeholder="Enter the reason…"
+                required
+              ></textarea>
+            </div>
+
+            <button type="submit" class="btn btn-primary">Submit</button>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+  // toggle date field visibility
+  document.getElementById('actionSelect').addEventListener('change', function() {
+    const suspendGroup = document.getElementById('suspendDateGroup');
+    if (this.value === 'suspend') {
+      suspendGroup.style.display = 'block';
+      // make date required when suspending
+      document.getElementById('deactivated_until').setAttribute('required','');
+    } else {
+      suspendGroup.style.display = 'none';
+      document.getElementById('deactivated_until').removeAttribute('required');
+    }
+  });
+  </script>
+
+  
+  <!-- load Boodstrap -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.5/dist/js/bootstrap.bundle.min.js" crossorigin="anonymous"></script>
+  <script>
+    document.addEventListener("DOMContentLoaded", function() {
+      var deactivateModalEl = document.getElementById('deactivateModal');
+      // Use event delegation for current and future .deactivateBtn elements
+      document.addEventListener("click", function(e) {
+          var btn = e.target.closest(".deactivateBtn");
+          if (btn) {
+              var userId = btn.getAttribute("data-userid");
+              document.getElementById("modalUserId").value = userId;
+              document.getElementById("deactivateForm").action = "/deactivate_account/customer/" + userId + "/";
+              var deactivateModal = new bootstrap.Modal(deactivateModalEl);
+              deactivateModal.show();
+          }
+      });
+    });
+  </script>
+  
+  <script>
+    function toggleDropdown() {
+      const dropdown = document.getElementById('profileDropdown');
+      dropdown.style.display = dropdown.style.display === 'flex' ? 'none' : 'flex';
+    } 
+  </script>
+</body>
+</html>

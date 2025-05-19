@@ -1,0 +1,267 @@
+{% load static %}
+{% load widget_tweaks %}
+<meta charset="UTF-8" />
+<meta name="csrf-token" content="{{ csrf_token }}">
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<link rel="stylesheet" href="{% static 'landing/css/styles.css' %}">
+<link rel="stylesheet" href="{% static 'home/home.css' %}">
+<link href="https://cdnjs.cloudflare.com/ajax/libs/noUiSlider/15.6.1/nouislider.min.css" rel="stylesheet">
+<head>
+    <!-- Add this line to include Font Awesome -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+</head>
+<style>
+    /* General Styling */
+body {
+    font-family: 'Arial', sans-serif;
+    background-color: #f9f9f9;
+    margin: 0;
+    padding: 0;
+    color: #333;
+}
+
+.outer-container {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 20px;
+    background-color: #fff;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    border-radius: 10px;
+}
+
+.wrapper-container {
+    padding: 20px;
+}
+
+/* Header Styling */
+.restaurant-header {
+    text-align: center;
+    margin-bottom: 20px;
+}
+
+.restaurant-name {
+    color: #333;
+    text-decoration: none;
+    font-size: 28px;
+    font-weight: bold;
+}
+
+.restaurant-name:hover {
+    text-decoration: underline;
+}
+
+/* Divider Line */
+.divider {
+    margin: 20px 0;
+    border: 0;
+    border-top: 1px solid #ddd;
+}
+
+/* Form Styling */
+.review-form {
+    display: flex;
+    flex-direction: column;
+}
+
+.section-title {
+    font-size: 16px;
+    font-weight: bold;
+    margin-bottom: 10px;
+    color: #333;
+}
+
+.radio-group {
+    display: flex;
+    gap: 15px;
+    justify-content: center;
+    align-items: center;
+    margin-top: 10px;
+}
+
+.radio-group label {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    cursor: pointer;
+}
+
+.rating-number {
+    margin-top: 5px;
+    font-size: 14px;
+    color: #333;
+}
+
+/* Input Fields */
+.form-control {
+    width: 100%;
+    padding: 10px;
+    border-radius: 5px;
+    border: 1px solid #ccc;
+    margin-bottom: 15px;
+    font-size: 14px;
+}
+
+.form-control:focus {
+    border-color: #007bff;
+    outline: none;
+}
+
+/* Submit Button */
+.submit-btn-container {
+    text-align: center;
+}
+
+.submit-btn {
+    background-color: #28a745;
+    color: white;
+    border: none;
+    padding: 12px 25px;
+    font-size: 16px;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+}
+
+.submit-btn:hover {
+    background-color: #218838;
+}
+
+.submit-btn:active {
+    background-color: #1e7e34;
+}
+
+.fieldWrapper {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    margin-bottom: 25px;
+}
+
+.fieldWrapper .section-title {
+    text-align: center;
+    margin-bottom: 10px;
+}
+
+.fieldWrapper .form-control {
+    max-width: 600px;
+}
+
+.star-rating {
+    direction: rtl;
+    display: flex;
+    justify-content: center;
+    gap: 5px;
+}
+
+.star-rating input {
+    display: none;
+}
+
+.star-rating label {
+    font-size: 28px;
+    color: #ccc;
+    cursor: pointer;
+    transition: color 0.2s;
+}
+
+.star-rating input:checked ~ label,
+.star-rating label:hover,
+.star-rating label:hover ~ label {
+    color: #ffcc00;
+}
+.health-rating {
+    direction: rtl;
+    display: flex;
+    justify-content: center;
+    gap: 5px;
+}
+
+.health-rating input {
+    display: none;
+}
+
+.health-rating label {
+    font-size: 28px;
+    color: #ccc;
+    cursor: pointer;
+    transition: color 0.2s;
+}
+
+.health-rating input:checked ~ label,
+.health-rating label:hover,
+.health-rating label:hover ~ label{
+    color: #28a745; /* Health rating */
+}
+</style>
+{% include 'components/header_nofilter.html' %}
+<div style="min-height: 100%; padding-top: 130px; background-color: #ffedd3;">
+    <div style="height: 90vh; overflow-y: auto;">
+        <div id="outer" class="outer-container">
+            <div id="wrapper" class="wrapper-container">
+                <div class="restaurant-header">
+                    <h1>
+                        <a href="{% url 'restaurant_detail' restaurant.id %}" class="restaurant-name">
+                            <i class="fa-solid fa-arrow-left"></i>  {{ restaurant.name }}
+                        </a>
+                    </h1>
+                </div>
+
+                <hr class="divider">
+
+                <form action="{% url 'addreview' restaurant.id %}" method="post" class="review-form" onsubmit="disableSubmitButton()">
+                    {% csrf_token %}
+
+                    <!-- Rating Section -->
+                    <div class="rating-section">
+                        <h6 class="section-title">Your overall rating of the restaurant</h6>
+                        <div class="star-rating">
+                            {% for i in "54321" %}
+                            <input type="radio" id="rating{{ i }}" name="rating" value="{{ i }}">
+                            <label for="rating{{ i }}" title="{{ i }} stars">&#9733;</label>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    
+                    <!-- Health Rating Section -->
+                    <div class="health-rating-section">
+                        <h6 class="section-title">How clean is this restaurant?</h6>
+                        <div class="health-rating">
+                            {% for i in "54321" %}
+                            <input type="radio" id="health_rating{{ i }}" name="health_rating" value="{{ i }}">
+                            <label for="health_rating{{ i }}" title="{{ i }} stars">&#9733;</label>
+                            {% endfor %}
+                        </div>
+                    </div>
+
+                    <hr class="divider">
+
+                    <!-- Title of Review Section -->
+                    <div class="fieldWrapper">
+                        <h6 class="section-title">Title of your review</h6>
+                        {% render_field form.title class="form-control" %}
+                    </div>
+
+                    <!-- Review Text Section -->
+                    <div class="fieldWrapper">
+                        <h6 class="section-title">Your review</h6>
+                        {% render_field form.comment class="form-control" %}
+                    </div>
+
+                    <div class="submit-btn-container">
+                        <input type="submit" value="Submit your review" class="btn btn-success submit-btn" id="submit-btn">
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+<script>
+    function disableSubmitButton() {
+        const btn = document.getElementById('submit-btn');
+        if (btn) {
+            btn.disabled = true;
+            btn.value = "Submitting...";
+        }
+        return true;  
+    }
+</script>

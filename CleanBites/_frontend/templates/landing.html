@@ -1,0 +1,365 @@
+{% load static %}
+{% load socialaccount %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no" />
+    <meta name="description" content="" />
+    <meta name="author" content="" />
+    <meta name="referrer" content="strict-origin-when-cross-origin" />
+    <title>CleanBites Landing</title>
+    <link href="{% static 'landing/css/styles.css' %}" rel="stylesheet" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+    <!-- Google Identity Services script -->
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
+</head>
+<body>
+    <!-- Navbar -->
+    {% if user.is_authenticated %}
+        {% include 'components/header_nofilter.html' %}
+    {% else %}
+        <nav class="apple-navbar">
+            <div class="navbar-left">
+              <a href="{% url 'home' %}">
+                <img src="{% static 'images/logo.png' %}" style="width: auto; height: 40px; max-width: 100%; display: block;">
+              </a>
+            </div>
+            <div class="navbar-right">
+                <ul class="nav-links">
+                    <li><a href="#" data-bs-toggle="modal" data-bs-target="#loginModal">Login</a></li>
+                    <li><a href="#" data-bs-toggle="modal" data-bs-target="#registerSelectionModal">Register</a></li>
+                </ul>
+            </div>
+        </nav>
+    {% endif %}
+
+    
+    
+    <!-- Hero Section -->
+    {% include 'landing_body.html' %}
+
+    <div style="overflow-y: auto;">
+      
+    </div>
+
+    <!-- Login Modal -->
+    <div class="modal fade" id="loginModal" tabindex="-1" aria-labelledby="loginModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="loginModalLabel">Sign In</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <form method="POST" action="{% url 'login' %}">
+                        {% csrf_token %}
+                        <div class="mb-3">
+                            <label for="username" class="form-label">Username</label>
+                            <input type="text" class="form-control" id="username" name="username" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="password" class="form-label">Password</label>
+                            <input type="password" class="form-control" id="password" name="password" required>
+                        </div>
+                        <button type="submit" class="btn btn-primary w-100">Login</button>
+                    </form>
+                    <div class="text-center mt-3">
+                        <p>or</p>
+                        <div id="g_id_onload"
+                             data-context="signin"
+                             data-ux_mode="popup"
+                             data-client_id="405283966911-hr2n3vbrackk4ed28bbltm9li5nlv1o4.apps.googleusercontent.com"
+                             data-callback="handleCredentialResponse"
+                             data-auto_prompt="false">
+                        </div>
+                        <div class="g_id_signin"
+                             data-type="standard"
+                             data-size="large"
+                             data-theme="outline"
+                             data-text="continue_with"
+                             data-shape="rectangular"
+                             data-logo_alignment="center">
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- User Register Modal -->
+    <div class="modal fade" id="registerModal" tabindex="-1" aria-labelledby="registerModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="registerModalLabel">Register</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <form method="POST" action="{% url 'register' %}">
+                        {% csrf_token %}
+                        <div class="mb-3">
+                            <label for="reg-username" class="form-label">Username</label>
+                            <input type="text" class="form-control" id="reg-username" name="username" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="reg-email" class="form-label">Email</label>
+                            <input type="email" class="form-control" id="reg-email" name="email" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="reg-password" class="form-label">Password</label>
+                            <input type="password" class="form-control" id="reg-password" name="password1" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="reg-password-confirm" class="form-label">Confirm Password</label>
+                            <input type="password" class="form-control" id="reg-password-confirm" name="password2" required>
+                        </div>
+                        <button type="submit" class="btn btn-success w-100">Register</button>
+                    </form>
+                    <div class="text-center mt-3">
+                        <p>or</p>
+                        <!-- Google Sign Up Popup Button -->
+                        <div id="g_id_onload_signup"
+                             data-context="signup"
+                             data-ux_mode="popup"
+                             data-client_id="405283966911-hr2n3vbrackk4ed28bbltm9li5nlv1o4.apps.googleusercontent.com"
+                             data-callback="handleRegistrationCredentialResponse"
+                             data-auto_prompt="false">
+                        </div>
+                        <div class="g_id_signin"
+                             data-type="standard"
+                             data-size="large"
+                             data-theme="outline"
+                             data-text="continue_with"
+                             data-shape="rectangular"
+                             data-logo_alignment="center">
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Admin Register Modal -->
+    <div class="modal fade" id="adminRegisterModal" tabindex="-1" aria-labelledby="registerModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="registerModalLabel">Register</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <form method="POST" action="{% url 'moderator_register' %}">
+                        {% csrf_token %}
+                        <div class="mb-3">
+                            <label for="reg-username" class="form-label">Username</label>
+                            <input type="text" class="form-control" id="reg-username" name="username" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="reg-email" class="form-label">Email</label>
+                            <input type="email" class="form-control" id="reg-email" name="email" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="reg-password" class="form-label">Password</label>
+                            <input type="password" class="form-control" id="reg-password" name="password1" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="reg-password-confirm" class="form-label">Confirm Password</label>
+                            <input type="password" class="form-control" id="reg-password-confirm" name="password2" required>
+                        </div>
+                        <button type="submit" class="btn btn-success w-100">Register</button>
+                    </form>
+                    <div class="text-center mt-3">
+                        <p>or</p>
+                        <!-- Google Sign Up Popup Button -->
+                        <div id="g_id_onload_signup"
+                             data-context="signup"
+                             data-ux_mode="popup"
+                             data-client_id="405283966911-hr2n3vbrackk4ed28bbltm9li5nlv1o4.apps.googleusercontent.com"
+                             data-callback="handleRegistrationCredentialResponse"
+                             data-auto_prompt="false">
+                        </div>
+                        <div class="g_id_signin"
+                             data-type="standard"
+                             data-size="large"
+                             data-theme="outline"
+                             data-text="continue_with"
+                             data-shape="rectangular"
+                             data-logo_alignment="center">
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Register Selection Modal -->
+    <div class="modal fade" id="registerSelectionModal" tabindex="-1" aria-labelledby="registerSelectionModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="registerSelectionModalLabel">Select Registration Type</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="registerSelectionForm" method="post">
+                        {% csrf_token %}
+                        <div class="mb-3">
+                            <label for="userType" class="form-label">Register As</label>
+                            <select class="form-select" id="userType" name="user_type" required>
+                                <option value="user">User</option>
+                                <option value="restaurant_owner">Restaurant Owner</option>
+                                <option value="admin">Admin</option>
+                            </select>
+                        </div>
+                        <button type="submit" class="btn btn-primary w-100">Continue</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+    <!-- Message modal -->
+    <div class="modal fade" id="messageModal" tabindex="-1" aria-labelledby="messageModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+          <div class="modal-content">
+            <div class="modal-header">
+              <!-- You could change the title dynamically by checking the message type if desired -->
+              <h5 class="modal-title" id="messageModalLabel">Notice</h5>
+              <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+              {% for message in messages %}
+                <div class="alert {% if 'error' in message.tags %}alert-danger{% elif 'success' in message.tags %}alert-success{% else %}alert-info{% endif %}" role="alert">
+                  {{ message }}
+                </div>
+              {% endfor %}
+            </div>
+            <div class="modal-footer">
+              <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+          </div>
+        </div>
+    </div>
+    {% if messages %}
+    <script>
+        document.addEventListener("DOMContentLoaded", function() {
+            // Initialize the modal and show it
+            var messageModal = new bootstrap.Modal(document.getElementById('messageModal'));
+            messageModal.show();
+        });
+    </script>
+    {% endif %}
+    <script>
+        document.getElementById("registerSelectionForm").addEventListener("submit", function(event) {
+            event.preventDefault();  // Prevent the default form submission
+        
+            let userType = document.getElementById("userType").value;
+            
+            if (userType === "user") {
+                // Close the Register Selection Modal
+                var registerSelectionModal = bootstrap.Modal.getInstance(document.getElementById('registerSelectionModal'));
+                registerSelectionModal.hide();
+        
+                // Open the User Register Modal
+                var registerModal = new bootstrap.Modal(document.getElementById('registerModal'));
+                registerModal.show();
+        
+            } else if (userType === "restaurant_owner") {
+                // Redirect to the Restaurant Owner Registration Page
+                window.location.href = "{% url 'restaurant_register' %}";
+            } else if (userType === "admin") {
+                // Close the Register Selection Modal
+                var registerSelectionModal = bootstrap.Modal.getInstance(document.getElementById('registerSelectionModal'));
+                registerSelectionModal.hide();
+        
+                // Open the Admin Register Modal
+                var adminRegisterModal = new bootstrap.Modal(document.getElementById('adminRegisterModal'));
+                adminRegisterModal.show();
+            }
+        });
+    </script>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Helper to retrieve Django CSRF token from cookie
+        function getCookie(name) {
+          let cookieValue = null;
+          if (document.cookie && document.cookie !== "") {
+            const cookies = document.cookie.split(";");
+            for (let i = 0; i < cookies.length; i++) {
+              const cookie = cookies[i].trim();
+              // Does this cookie string begin with name=?
+              if (cookie.substring(0, name.length + 1) === (name + "=")) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+              }
+            }
+          }
+          return cookieValue;
+        }
+  
+        // 5) Called by Google when the user successfully signs in
+        function handleCredentialResponse(response) {
+          console.log("Google Sign-In Response:", response);
+          const idToken = response.credential; // The JWT from Google
+          if (!idToken) {
+            console.error("No ID token received"); // Debug log for missing token
+            alert("Failed to retrieve ID token.");
+            return;
+          }
+          // Send this token to your Django backend to verify & log the user in
+          fetch("/google-signin/", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "X-CSRFToken": getCookie("csrftoken")  // needed if CSRF is enforced
+            },
+            body: JSON.stringify({ credential: idToken })
+          })
+          .then(response => {
+            if (!response.ok) {
+              throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            return response.json();
+          })
+          .then(data => {
+            console.log("Backend Response:", data);
+            if (data.success) {
+              // e.g., redirect or close modal
+              ensureCustomerExistsAndRedirect(data.redirect_url || "/home/");
+            } else {
+              alert("Google sign-in failed: " + (data.error || "Unknown error"));
+            }
+          })
+          .catch(err => {
+            console.error("Fetch error:", err);
+            alert("Something went wrong during Google sign-in.");
+          });
+        }
+
+        function ensureCustomerExistsAndRedirect(redirectUrl = "/home/") {
+          fetch("/ensure-customer/", {
+            method: "POST",
+            headers: {
+              "X-CSRFToken": getCookie("csrftoken"),
+            },
+          })
+          .then(res => res.json())
+          .then(data => {
+            if (!data.success) {
+              console.error("Failed to ensure Customer record:", data.error);
+            } else {
+              console.log("Customer ensured:", data);
+            }
+            window.location.href = redirectUrl;
+          })
+          .catch(err => {
+            console.error("Error ensuring Customer record:", err);
+            window.location.href = redirectUrl;
+          });
+        }
+      </script>
+
+    <script src="{% static 'landing/js/scripts.js' %}"></script>
+</body>
+</html>

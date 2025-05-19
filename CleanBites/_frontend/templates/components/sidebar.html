@@ -1,0 +1,352 @@
+{% load static %}
+<div class="sidebar collapsed">
+  <button class="sidebar-toggle" onclick="toggleSidebar()">☰</button>
+  <div class="sidebar-content">
+    <div class="geocode-container">
+      <input type="text" id="sidebar-geocode-address" placeholder="Enter your location">
+      <button type="button" onclick="submitSidebarGeocode()">Set Location</button>
+      <button type="button" class="reset-btn" onclick="resetToCurrentLocation()" style="padding-top: 5px; background-color:#6c757d">Reset Location</button>
+      <span id="sidebar-geocode-status" class="geocode-status"></span>
+    </div>
+    <div class="search-container">
+      <form id="sidebar-search-form">
+        <input type="text" id="sidebar-search-name" placeholder="Restaurant Name">
+        <div class="ratings-container">
+          <span class="ratings-label">Hygiene Ratings:</span>
+          <div class="ratings-options">
+            <label><input type="checkbox" name="ratings" value="A" checked> A</label>
+            <label><input type="checkbox" name="ratings" value="B" checked> B</label>
+            <label><input type="checkbox" name="ratings" value="C" checked> C</label>
+          </div>
+        </div>
+        <input type="text" id="sidebar-search-cuisine" placeholder="Cuisine">
+        <input type="text" id="sidebar-search-distance" placeholder="Distance (km)">
+        <button type="submit" class="search-btn">Search</button>
+        <button type="button" class="reset-btn" onclick="resetMapInIframe()">Reset Markers</button>
+      </form>
+    </div>
+  </div>
+</div>
+
+<style>
+.sidebar {
+  position: absolute;
+  left: 0;
+  top: 0;
+  height: 100vh;
+  width: 300px;
+  background: white;
+  box-shadow: 2px 0 5px rgba(0,0,0,0.1);
+  transition: transform 0.3s ease;
+  z-index: 1001;
+}
+
+.sidebar.collapsed {
+  transform: translateX(-300px);
+}
+
+.sidebar:not(.collapsed) {
+  transform: translateX(50px);
+}
+
+.sidebar-toggle {
+  position: absolute;
+  right: -45px;
+  top: 130px;
+  background: white;
+  border: none;
+  padding: 10px;
+  cursor: pointer;
+  box-shadow: 2px 2px 5px rgba(0,0,0,0.1);
+  border-radius: 5px;
+}
+
+.sidebar-content {
+  padding: 20px;
+}
+
+.search-container {
+  margin-top: 20px;
+}
+
+.search-container input {
+  width: 100%;
+  margin-bottom: 10px;
+  padding: 8px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+}
+
+.ratings-container {
+  margin: 10px 0;
+}
+
+.ratings-label {
+  display: block;
+  margin-bottom: 5px;
+  font-weight: bold;
+}
+
+.ratings-options {
+  display: flex;
+  justify-content: space-between;
+}
+
+.search-btn, .reset-btn {
+  width: 100%;
+  padding: 8px;
+  margin: 5px 0;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.search-btn {
+  background-color: #007bff;
+  color: white;
+}
+
+.reset-btn {
+  background-color: #6c757d;
+  color: white;
+}
+
+.geocode-container {
+  margin-bottom: 20px;
+}
+
+.geocode-container input {
+  width: 100%;
+  margin-bottom: 10px;
+  padding: 8px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+}
+
+.geocode-container button {
+  width: 100%;
+  padding: 8px;
+  border: none;
+  border-radius: 4px;
+  background-color: #28a745;
+  color: white;
+  cursor: pointer;
+}
+
+.geocode-status {
+  display: block;
+  margin-top: 5px;
+  text-align: center;
+  font-weight: bold;
+}
+</style>
+
+<script>
+function toggleSidebar() {
+  const sidebar = document.querySelector('.sidebar');
+  sidebar.classList.toggle('collapsed');
+}
+
+document.getElementById('sidebar-search-form').addEventListener('submit', function (e) {
+  e.preventDefault(); 
+  performSidebarSearch();    
+});
+
+document.addEventListener('click', function(e) {
+    const sidebar = document.querySelector('.sidebar');
+    const toggleBtn = document.querySelector('.sidebar-toggle');
+    
+    if (!sidebar.contains(e.target) && e.target !== toggleBtn && !sidebar.classList.contains('collapsed')) {
+      sidebar.classList.add('collapsed');
+      toggleBtn.textContent = '☰';
+    }
+});
+
+function performSidebarSearch() {
+  const name = document.getElementById('sidebar-search-name').value;
+  const checkedRatings = Array.from(document.querySelectorAll('#sidebar-search-form input[name="ratings"]:checked'))
+                          .map(el => el.value);
+  const rating = checkedRatings.join(',');
+  const cuisine = document.getElementById('sidebar-search-cuisine').value;
+  const distance = document.getElementById('sidebar-search-distance').value;
+
+  const lat = typeof window.globalLAT !== 'undefined' ? window.globalLAT : 40.69455789521935;
+  const lng = typeof window.globalLNG !== 'undefined' ? window.globalLNG : -73.9865872293045;
+
+  const params = new URLSearchParams({
+    lat: lat,
+    lng: lng,
+    distance: distance,
+    name: name,
+    rating: rating,
+    cuisine: cuisine
+  });
+
+  const apiUrl = `/api/restaurants/geojson/?${params.toString()}`;
+  console.log("📡 Sending API request to:", apiUrl);
+
+  document.getElementById('map-loading-spinner').style.display = 'flex';
+
+  fetch(apiUrl)
+    .then(response => response.json())
+    .then(data => {
+        const mapFrame = document.getElementById("map-frame").contentWindow;
+        if (mapFrame && mapFrame.updateMarkers) {
+            mapFrame.updateMarkers(data);
+        }
+    })
+    .catch(error => console.error('❌ Error fetching restaurant data:', error))
+    .finally(() => {
+      document.getElementById('map-loading-spinner').style.display = 'none';
+    });
+}
+
+async function submitSidebarGeocode() {
+  const address = document.getElementById('sidebar-geocode-address').value;
+  const status = document.getElementById('sidebar-geocode-status');
+
+  if (address.trim() === "") {
+    status.textContent = '❌ Please enter a valid address';
+    status.style.color = 'red';
+    return;
+  }
+
+  try {
+    const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(address)}`;
+    const response = await fetch(url);
+    const data = await response.json();
+
+    if (data.length > 0) {
+      const { lat, lon } = data[0];
+      window.globalLAT = parseFloat(lat);
+      window.globalLNG = parseFloat(lon);
+      status.textContent = '✅ Location updated successfully';
+      status.style.color = 'green';
+
+      const mapFrame = document.getElementById("map-frame");
+      if (mapFrame && mapFrame.contentWindow && typeof mapFrame.contentWindow.dropGeocodeMarker === "function") {
+          mapFrame.contentWindow.dropGeocodeMarker(parseFloat(lat), parseFloat(lon));
+      }
+    } else {
+      status.textContent = '❌ Location not found';
+      status.style.color = 'red';
+    }
+  } catch (error) {
+    status.textContent = '❌ Error updating location';
+    status.style.color = 'red';
+    console.error("Geocoding failed:", error);
+  }
+
+  setTimeout(() => {
+    status.textContent = '';
+  }, 3000);
+}
+
+function resetMapInIframe() {
+  try {
+    console.log('Attempting to reset map and form fields...');
+    
+    // Reset form fields
+    if (document.getElementById('sidebar-search-name')) {
+      document.getElementById('sidebar-search-name').value = "";
+    }
+    
+    if (document.getElementById('sidebar-search-form')) {
+      document.querySelectorAll('input[name="ratings"]').forEach(function(checkbox) {
+        checkbox.checked = true;
+      });
+    }
+    
+    if (document.getElementById('sidebar-search-cuisine')) {
+      document.getElementById('sidebar-search-cuisine').value = "";
+    }
+    
+    if (document.getElementById('sidebar-search-distance')) {
+      document.getElementById('sidebar-search-distance').value = "";
+    }
+    
+    // Get map frame
+    const mapFrame = document.getElementById("map-frame");
+    console.log('Map frame:', mapFrame);
+    
+    if (!mapFrame) {
+      console.error('Map frame element not found');
+      return;
+    }
+    
+    // Show loading spinner
+    const spinner = document.getElementById('map-loading-spinner');
+    if (spinner) {
+      spinner.style.display = 'flex';
+      
+      // Hide spinner after a delay
+      setTimeout(() => {
+        spinner.style.display = 'none';
+      }, 1000);
+    }
+    
+    // Call the resetFilters function in the iframe
+    const contentWindow = mapFrame.contentWindow;
+    if (contentWindow && typeof contentWindow.resetFilters === "function") {
+      console.log("Calling resetFilters on iframe...");
+      contentWindow.resetFilters();
+    } else {
+      console.error("resetFilters is not accessible in iframe!");
+      // Reload the iframe as a fallback
+      mapFrame.src = mapFrame.src;
+    }
+  } catch (error) {
+    console.error('Error resetting map:', error);
+  }
+}
+
+function resetToCurrentLocation() {
+  const status = document.getElementById('sidebar-geocode-status');
+
+  if (!navigator.geolocation) {
+    setFallbackLocation("❌ Geolocation not supported by your browser");
+    return;
+  }
+
+  navigator.geolocation.getCurrentPosition(
+    (position) => {
+      const { latitude, longitude } = position.coords;
+      window.globalLAT = latitude;
+      window.globalLNG = longitude;
+
+      status.textContent = '✅ Location reset';
+      status.style.color = 'green';
+
+      const mapFrame = document.getElementById("map-frame");
+      if (mapFrame && mapFrame.contentWindow && typeof mapFrame.contentWindow.dropGeocodeMarker === "function") {
+        mapFrame.contentWindow.dropGeocodeMarker(latitude, longitude);
+      }
+
+      setTimeout(() => {
+        status.textContent = '';
+      }, 3000);
+    },
+    (error) => {
+      console.error("Geolocation error:", error);
+      setFallbackLocation('❌ Could not retrieve location, defaulting to NYC');
+    }
+  );
+
+  function setFallbackLocation(message) {
+    window.globalLAT = 40.69455789521935;
+    window.globalLNG = -73.9865872293045;
+
+    status.textContent = message;
+    status.style.color = 'orange';
+
+    const mapFrame = document.getElementById("map-frame");
+    if (mapFrame && mapFrame.contentWindow && typeof mapFrame.contentWindow.dropGeocodeMarker === "function") {
+      mapFrame.contentWindow.dropGeocodeMarker(window.globalLAT, window.globalLNG);
+    }
+
+    setTimeout(() => {
+      status.textContent = '';
+    }, 3000);
+  }
+}
+</script>

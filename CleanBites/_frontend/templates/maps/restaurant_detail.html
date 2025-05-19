@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  {% load static %}
+  <meta charset="UTF-8" />
+  <meta name="csrf-token" content="{{ csrf_token }}">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>{{ restaurant.name }}</title>
+  <link rel="stylesheet" href="{% static 'landing/css/styles.css' %}">
+  <link rel="stylesheet" href="{% static 'home/home.css' %}">
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/noUiSlider/15.6.1/nouislider.min.css" rel="stylesheet">
+  <style>
+    html, body {
+      padding-top: 60px; /* Adds a gap between the header and the content */
+      font-family: 'Arial', sans-serif;
+      margin: 0;
+      background-color: #ffedd3;
+    }
+    .container {
+      max-width: 700px;
+      margin: 60px auto; 
+      padding: 15px;
+      background: white;
+      border-radius: 12px;
+      box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.1);
+      overflow: visible; 
+    }
+    .restaurant-header {
+      text-align: center;
+    }
+    .restaurant-img {
+      width: 100%;
+      max-height: 300px;
+      object-fit: cover;
+      border-radius: 12px;
+    }
+    .average-ratings {
+    margin: 10px 0 20px;
+    font-size: 1rem;
+    color: #444;
+  }
+  .average-ratings i {
+    margin-right: 2px;
+  }
+  .avg-number {
+    margin-left: 8px;
+    font-weight: bold;
+  }    
+    h1 {
+      color: #1a73e8;
+      margin: 15px 0 10px;
+      text-align: center;
+    }
+    .info {
+      display: flex;
+      align-items: center; /* Ensures vertical alignment */
+      margin: 10px 0;
+      font-size: 16px;
+      color: #333;
+    }
+    .info i {
+      color: #1a73e8;
+      margin-right: 10px;
+      min-width: 20px; /* Ensures consistent width for icons */
+      text-align: center; /* Centers the icon within its space */
+    }
+    .rating {
+      font-weight: bold;
+      font-size: 16px;
+    }
+    .description {
+      margin-top: 15px;
+      font-size: 15px;
+      color: #555;
+      line-height: 1.5;
+    }
+    #edit-profile-btn {
+      margin: 15px 0;
+      padding: 10px 20px;
+      background-color: #1a73e8;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+    #edit-profile-form {
+      margin-top: 20px;
+      display: none;
+      max-height: 400px; /* Limit the height of the form */
+      overflow-y: auto; /* Add vertical scrolling for the form */
+      padding-right: 10px; /* Add padding for better usability */
+    }
+    #edit-profile-form input,
+    #edit-profile-form textarea {
+      width: 100%;
+      padding: 8px;
+      margin: 6px 0;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+    }
+    #edit-profile-form button {
+      margin-top: 10px;
+      padding: 8px 16px;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+    #edit-profile-form button[type="submit"] {
+      background-color: #28a745;
+      color: white;
+    }
+    #edit-profile-form button[type="button"] {
+      background-color: #dc3545;
+      color: white;
+      margin-left: 10px;
+    }
+    #add-review-btn {
+      margin: 15px 0;
+      padding: 10px 20px;
+      background-color: #1a73e8;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+    .text-yellow {
+  color: #f5b301;
+}
+.text-green {
+  color: #28a745;
+}
+        /* Shared button style */
+    .btn {
+      margin: 10px 5px; /* Add some spacing between buttons */
+      padding: 0; /* Remove extra padding */
+      background-color: #1a73e8;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      text-align: center;
+      font-size: 14px;
+      font-weight: bold;
+      text-decoration: none; 
+      display: flex; 
+      align-items: center; 
+      justify-content: center; 
+      width: 160px; 
+      height: 50px; 
+    }
+
+    .btn:hover {
+      background-color: #1558b0; /* Darker shade for hover effect */
+    }
+    /* Responsive adjustments */
+    @media (max-width: 768px) {
+      .container {
+        padding: 20px;
+        margin: 20px;
+      }
+
+      #edit-profile-form {
+        max-height: 300px; /* Adjust form height for smaller screens */
+      }
+    }
+  </style>
+</head>
+<body>
+  {% include 'components/header_nofilter.html' %}
+  <div style="min-height: 100%; padding-top: 85px; background-color: #ffedd3;">
+    <div style="height: 90vh; overflow-y: auto;">
+      <div class="container">
+          <div class="restaurant-header">
+              <h1 class="h3 mb-3">{{ restaurant.name }}</h1>
+          </div>
+          <div class="info">
+              <i class="fas fa-map-marker-alt"></i>
+              <strong>Address:</strong> {{ restaurant.building }}, {{ restaurant.street }}, {{ restaurant.zipcode }}
+          </div>
+          <div class="info">
+              <i class="fas fa-utensils"></i>
+              <strong>Cuisine:</strong> {{ restaurant.cuisine_description }}
+          </div>
+          <div class="info">
+              <i class="fa fa-phone"></i>
+              <strong>Phone:</strong> {{ restaurant.phone }}
+          </div>
+          <div class="info rating">
+              <i class="fas fa-star"></i>
+              <strong>Hygiene Rating:</strong> <span id="hygiene-grade" data-rating="{{ restaurant.hygiene_rating }}"></span>
+          </div>
+          <div class="info">
+              <i class="fa-solid fa-file"></i>
+              <strong>Violation Description:</strong> {{ restaurant.violation_description }}
+          </div>
+          <div class="info">
+              <i class="fa-solid fa-calendar-days"></i>
+              <strong>Inspection Date:</strong> {{ restaurant.inspection_date }}
+          </div>
+          <div class="average-ratings">
+          <p>
+            <strong>Average Rating:</strong>
+            {% for i in "12345" %}
+            <i class="fa-star {% if avg_rating|add:'0' >= i|add:'0' %}fas text-yellow{% else %}far{% endif %}"></i>
+            {% endfor %}
+            <span class="avg-number">({{ avg_rating|floatformat:1 }}/5)</span>
+          </p>
+          <p>
+            <strong>Average Health Rating:</strong>
+            {% for i in "12345" %}
+            <i class="fa-star {% if avg_health|add:'0' >= i|add:'0' %}fas text-green{% else %}far{% endif %}"></i>
+            {% endfor %}
+            <span class="avg-number">({{ avg_health|floatformat:1 }}/5)</span>
+          </p>
+
+          {% if is_owner %}
+              <button id="edit-profile-btn" class="btn">Edit Profile</button>
+          {% endif %}
+
+          <div id="edit-profile-form" style="display: none;">
+              <form id="profileForm" enctype="multipart/form-data" method="POST" action="/update-profile/">
+                  {% csrf_token %}
+                  <label>Restaurant Name:</label>
+                  <input type="text" name="name" value="{{ restaurant.name }}">
+
+                  <label>Building:</label>
+                  <input type="text" name="building" value="{{ restaurant.building }}">
+
+                  <label>Street:</label>
+                  <input type="text" name="street" value="{{ restaurant.street }}">
+
+                  <label>Zipcode:</label>
+                  <input type="text" name="zipcode" value="{{ restaurant.zipcode }}">
+
+                  <label>Phone:</label>
+                  <input type="text" name="phone" value="{{ restaurant.phone }}">
+
+                  <label>Cuisine:</label>
+                  <input type="text" name="cuisine_description" value="{{ restaurant.cuisine_description }}">
+
+                  <button type="submit" class="btn">Save Changes</button>
+                  <button type="button" id="cancel-edit" class="btn">Cancel</button>
+              </form>
+          </div>
+          {% if is_customer %}
+          <a href="{% url 'addreview' restaurant.id %}" id="add-review-btn" class="btn">
+              Write a review
+          </a>
+          {% endif %}
+        </div>
+      </div>
+          <div class="container">
+            {% include "components/restaurant_review.html" with restaurant=restaurant reviews=reviews %}
+          </div>
+    
+  </div>
+
+<script>
+  function getLetterGrade(rating, style = false) {
+    let grade = '';
+    let color = '';
+    if (rating <= 13) {
+      grade = 'A';
+      color = '#00cc00'; // Green
+    } else if (rating <= 27) {
+      grade = 'B';
+      color = '#ffa500'; // Orange
+    } else {
+      grade = 'C';
+      color = '#ff0000'; // Red
+    }
+    if (style) {
+      return `<span style="color: ${color}; font-weight: bold;">${grade}</span>`; // Corrected to return a proper HTML string
+    }
+    return grade;
+  }
+
+  document.addEventListener('DOMContentLoaded', () => {
+    const gradeEl = document.getElementById('hygiene-grade');
+    const rating = parseInt(gradeEl.dataset.rating, 10);
+    gradeEl.innerHTML = getLetterGrade(rating, true);
+
+    const editBtn = document.getElementById('edit-profile-btn');
+    const formDiv = document.getElementById('edit-profile-form');
+    const cancelBtn = document.getElementById('cancel-edit');
+
+    editBtn.addEventListener('click', () => {
+      formDiv.style.display = 'block';
+      editBtn.style.display = 'none';
+    });
+
+    cancelBtn.addEventListener('click', () => {
+      formDiv.style.display = 'none';
+      editBtn.style.display = 'inline-block';
+    });
+  });
+
+  function toggleDropdown() {
+      const dropdown = document.getElementById('profileDropdown');
+      dropdown.style.display = dropdown.style.display === 'flex' ? 'none' : 'flex';
+    }
+</script>
+
+<script>
+  document.addEventListener("DOMContentLoaded", function() {
+      // Attach event listener to each Report button
+      const reportButtons = document.querySelectorAll(".report-comment-btn");
+      reportButtons.forEach(function(button) {
+          button.addEventListener("click", function() {
+              // Ask for confirmation before reporting
+              if (!confirm("Are you sure you want to report this comment?")) {
+                  return;
+              }
+              const commentId = button.getAttribute("data-comment-id");
+              const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+              
+              // Send AJAX POST request to report the comment
+              fetch("/report_comment/", {
+                  method: "POST",
+                  headers: {
+                      "Content-Type": "application/json",
+                      "X-CSRFToken": csrfToken
+                  },
+                  body: JSON.stringify({ comment_id: commentId }),
+                  credentials: "include"
+              })
+              .then(response => response.json())
+              .then(data => {
+                  if (data.success) {
+                      alert("Comment reported successfully.");
+                      // Disable the button or change its label
+                      button.disabled = true;
+                      button.textContent = "Reported";
+                  } else {
+                      alert("Error reporting comment: " + (data.error || "Unknown error"));
+                  }
+              })
+              .catch(err => {
+                  console.error(err);
+                  alert("An error occurred. Please try again.");
+              });
+          });
+      });
+  });
+</script>
+
+</body>
+</html>

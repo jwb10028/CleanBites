@@ -1,0 +1,56 @@
+{
+    "AWSEBDockerrunVersion": "1",
+    "Image": {
+      "Name": "730335518224.dkr.ecr.us-west-2.amazonaws.com/cleanbites:latest",
+      "Update": "true"
+    },
+    "Ports": [
+      {
+        "ContainerPort": "8000"
+      }
+    ],
+    "Environment": [
+      {
+        "Name": "DEBUG",
+        "Value": "0"
+      },
+      {
+        "Name": "DATABASE_NAME",
+        "Value": "database-clean-bites"
+      },
+      {
+        "Name": "DATABASE_USER",
+        "Value": "cleanbites"
+      },
+      {
+        "Name": "DATABASE_PASSWORD",
+        "Value": "cleanbites123"
+      },
+      {
+        "Name": "DATABASE_HOST",
+        "Value": "database-clean-bites.c3ayoouwsmcp.us-east-2.rds.amazonaws.com"
+      },
+      {
+        "Name": "DATABASE_PORT",
+        "Value": "5432"
+      },
+      {
+        "Name": "DJANGO_ALLOWED_HOSTS",
+        "Value": "localhost,127.0.0.1,ec2-54-190-192-108.us-west-2.compute.amazonaws.com,CleanBites-env.eba-uajmqqqu.us-west-2.elasticbeanstalk.com"
+      }
+    ],
+    "NetworkConfiguration": {
+      "AwsvpcConfiguration": {
+        "Subnets": [
+          "subnet-0d3b505fdcde9492f",
+          "subnet-0fc774a9a5eb382c",
+          "subnet-08092a2249cf1b48f" 
+        ],
+        "SecurityGroups": [
+          "sg-04910493caa5f62d0"
+        ],
+        "AssignPublicIp": "ENABLED"
+      }
+    }
+  }
+  

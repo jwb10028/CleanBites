@@ -1,0 +1,87 @@
+{% load static %}
+<link rel="stylesheet" href="{% static 'landing/css/styles.css' %}">
+<link rel="stylesheet" href="{% static 'home/home.css' %}">
+<link href="https://cdnjs.cloudflare.com/ajax/libs/noUiSlider/15.6.1/nouislider.min.css" rel="stylesheet">
+<style>
+    /* Notification badge styles - updated for better visibility */
+    .notification-badge {
+      position: relative;
+    }
+    
+    .notification-badge::after {
+      content: '';
+      position: absolute;
+      top: 0;
+      right: -8px;
+      width: 10px;
+      height: 10px;
+      background-color: #ff0000;
+      border-radius: 50%;
+      display: block;
+      z-index: 100;
+    }
+    
+    /* Avatar with notification ring for unread messages */
+    .avatar-container {
+      position: relative;
+      display: inline-block;
+    }
+    
+    .avatar-container.unread::after {
+      content: '';
+      position: absolute;
+      top: -3px;
+      left: -3px;
+      right: -3px;
+      bottom: -3px;
+      border-radius: 50%;
+      border: 2px solid #ff3b30; /* Apple-style red notification color */
+      z-index: 1;
+    }
+</style>
+
+<header class="apple-navbar">  
+    <div class="navbar-left">
+      <h2><a href="{% url 'home' %}" style="text-decoration: none; color: inherit;">CleanBites</a></h2>
+    </div>
+
+    <div class="search-bar">      
+      <form id="search-form">
+        <input type="text" id="search-name" placeholder="Restaurant Name">
+        <div id="rating-checkboxes-container">
+          <span class="ratings-label">Hygiene Ratings:</span>
+          <div class="ratings-options">
+            <label><input type="checkbox" name="ratings" value="A" checked> A</label>
+            <label><input type="checkbox" name="ratings" value="B" checked> B</label>
+            <label><input type="checkbox" name="ratings" value="C" checked> C</label>
+          </div>
+        </div>
+        <input type="text" id="search-cuisine" placeholder="Cuisine">
+        <input type="text" id="search-distance" placeholder="Distance (km)">
+        <button type="submit" class="search-btn">Search</button>
+        <button type="button" class="reset-btn">Reset</button>
+      </form>
+    </div>
+
+    <div class="navbar-right">
+      <span class="username" style="color: rgb(231, 142, 0);">{{ user.username }}</span>
+      <div class="profile-dropdown">
+        <div class="avatar-container {% if has_unread_messages %}unread{% endif %}" onclick="toggleDropdown()">
+          <div class="avatar">
+            <!-- Placeholder avatar, WILL replace with user's profile image -->
+            <img src="{% static 'images/avatar-placeholder.png' %}" alt="Profile" />
+          </div>
+        </div>
+        <div class="dropdown-menu" id="profileDropdown">
+          <!-- WILL route HERE to user/restaurant profile page -->
+          <a href="/profile/{{ user.username }}/" class="dropdown-item">Profile</a>
+          <a href="/inbox/" class="dropdown-item {% if has_unread_messages %}notification-badge{% endif %}">Messages {% if has_unread_messages %}<span style="color: red; font-weight: bold;">(New)</span>{% endif %}</a>
+          <a href="/settings/" class="dropdown-item">Settings</a>
+          <form method="POST" action="{% url 'logout' %}">
+            {% csrf_token %}
+            <button type="submit" class="dropdown-item">Logout</button>
+          </form>
+        </div>
+      </div>
+    </div>    
+</header>

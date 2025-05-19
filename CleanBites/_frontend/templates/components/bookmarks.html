@@ -1,0 +1,261 @@
+{% load static %}
+<div class="bookmarks-sidebar collapsed">
+  <button class="bookmarks-toggle" onclick="toggleBookmarks()">★</button>
+  <div class="bookmarks-content">
+    <div class="bookmarks-header">
+      <h4>Favorite Restaurants</h4>
+    </div>
+    <div class="bookmarks-list">
+    <!-- Content will be populated by JavaScript -->
+    </div>
+  </div>
+</div>
+
+<style>
+  .bookmarks-sidebar {
+    position: absolute;
+    left: 0;
+    top: 0;
+    height: 100vh;
+    width: 300px;
+    background: white;
+    box-shadow: 2px 0 5px rgba(0,0,0,0.1);
+    transition: transform 0.3s ease;
+    z-index: 1001;
+  }
+  
+  .bookmarks-sidebar.collapsed {
+    transform: translateX(-300px);
+  }
+
+  .bookmarks-sidebar:not(.collapsed) {
+    transform: translateX(50px);
+  }
+  
+  .bookmarks-toggle {
+    position: absolute;
+    right: -45px;
+    top: 185px;
+    background: white;
+    border: none;
+    padding: 10px;
+    cursor: pointer;
+    box-shadow: 2px 2px 5px rgba(0,0,0,0.1);
+    border-radius: 5px;
+  }
+  
+  /* Rest of the styles remain the same */
+  .bookmarks-content {
+    padding: 20px;
+    overflow-y: auto;
+  }
+
+  .bookmarks-list {
+    max-height: calc(100vh - 180px); /* or whatever you want — maybe 80% of the screen height */
+    overflow-y: auto;
+    padding-right: 8px; /* space for scrollbar */
+  }
+  
+  .bookmarks-header {
+    padding-bottom: 0.75rem;
+    border-bottom: 1px solid #eee;
+    margin-bottom: 1rem;
+  }
+  
+  .bookmark-item {
+    padding: 0.75rem;
+    margin-bottom: 0.5rem;
+    border-radius: 4px;
+    transition: background 0.2s;
+  }
+  
+  .bookmark-item:hover {
+    background: #f8f9fa;
+  }
+  
+  .bookmark-name {
+    font-weight: 600;
+    margin-bottom: 0.25rem;
+  }
+  
+  .bookmark-meta {
+    font-size: 0.85rem;
+    color: #666;
+  }
+  
+  .no-favorites {
+    padding: 1rem;
+    color: #999;
+    text-align: center;
+    font-style: italic;
+  }
+
+  .bookmark-item-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  
+  .bookmark-delete {
+    background: none;
+    border: none;
+    font-size: 1rem;
+    color: #888;
+    cursor: pointer;
+    padding: 0;
+    margin-left: 10px;
+  }
+  
+  .bookmark-delete:hover {
+    color: #d9534f;
+  }
+</style>
+
+<script>
+  // JavaScript remains the same since the functionality doesn't change
+  document.addEventListener('DOMContentLoaded', function () {
+    fetch('/bookmarks/')
+      .then(response => {
+        if (!response.ok) {
+          return response.json().then(err => {
+            throw new Error(err.error || 'Request failed');
+          });
+        }
+        return response.json();
+      })
+      .then(data => {
+        const bookmarksList = document.querySelector('.bookmarks-list');
+        bookmarksList.innerHTML = '';
+  
+        if (!data.restaurants || data.restaurants.length === 0) {
+          bookmarksList.innerHTML = '<div class="no-favorites">No favorites added yet</div>';
+          return;
+        }
+  
+        // Build a lookup map: restaurant.id → bookmark.id
+        const bookmarkMap = {};
+        if (data.bookmarks) {
+          data.bookmarks.forEach(bookmark => {
+            bookmarkMap[bookmark.restaurant_id] = bookmark.id;
+          });
+        }
+  
+        // Create HTML for each restaurant
+        data.restaurants.forEach(restaurant => {
+          const bookmarkId = bookmarkMap[restaurant.id]; // FavoriteRestaurant.id
+  
+          const item = document.createElement('div');
+          item.className = 'bookmark-item';
+          item.innerHTML = `
+            <div class="bookmark-item-header">
+              <a href="/restaurant/${restaurant.id}/" style="text-decoration: none; color: orange;">
+                <div class="bookmark-name" style="color: orange;">${restaurant.name}</div>
+              </a>
+              <button class="bookmark-delete" onclick="deleteBookmark(${bookmarkId}, this)">✕</button>
+            </div>
+            <div class="bookmark-meta">
+              <span class="bookmark-address">${restaurant.address || ''}</span>
+            </div>
+          `;
+          bookmarksList.appendChild(item);
+        });
+      })
+      .catch(error => {
+        console.error('Error:', error.message);
+        const bookmarksList = document.querySelector('.bookmarks-list');
+        bookmarksList.innerHTML = '<div class="no-favorites">Error loading favorites</div>';
+      });
+  });
+  
+  function toggleBookmarks() {
+    const sidebar = document.querySelector('.bookmarks-sidebar');
+    sidebar.classList.toggle('collapsed');
+    const toggleBtn = document.querySelector('.bookmarks-toggle');
+    toggleBtn.textContent = '★';
+  }
+
+  document.addEventListener('click', function(e) {
+    const sidebar = document.querySelector('.bookmarks-sidebar');
+    const toggleBtn = document.querySelector('.bookmarks-toggle');
+    
+    if (!sidebar.contains(e.target) && e.target !== toggleBtn && !sidebar.classList.contains('collapsed')) {
+      sidebar.classList.add('collapsed');
+      toggleBtn.textContent = '★';
+    }
+  });
+
+  function deleteBookmark(bookmarkId, buttonElement) {
+    fetch('/bookmarks/', {
+      method: 'DELETE',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ id: bookmarkId }),
+      credentials: 'include'  // still include cookies/session
+    })
+    .then(res => {
+      if (!res.ok) throw new Error("Failed to delete");
+      const item = buttonElement.closest('.bookmark-item');
+      if (item) item.remove();
+    })
+    .catch(err => {
+      console.error("Delete failed:", err);
+      alert("Failed to remove bookmark.");
+    });
+  }
+</script>
+
+<script>
+  function loadBookmarks() {
+    const bookmarksList = document.querySelector('.bookmarks-list');
+    fetch('/bookmarks/')
+      .then(response => {
+        if (!response.ok) {
+          return response.json().then(err => {
+            throw new Error(err.error || 'Request failed');
+          });
+        }
+        return response.json();
+      })
+      .then(data => {
+        bookmarksList.innerHTML = '';
+
+        if (!data.restaurants || data.restaurants.length === 0) {
+          bookmarksList.innerHTML = '<div class="no-favorites">No favorites added yet</div>';
+          return;
+        }
+
+        const bookmarkMap = {};
+        if (data.bookmarks) {
+          data.bookmarks.forEach(bookmark => {
+            bookmarkMap[bookmark.restaurant_id] = bookmark.id;
+          });
+        }
+
+        data.restaurants.forEach(restaurant => {
+          const bookmarkId = bookmarkMap[restaurant.id];
+          const item = document.createElement('div');
+          item.className = 'bookmark-item';
+          item.innerHTML = `
+            <div class="bookmark-item-header">
+              <a href="/restaurant/${restaurant.id}/" style="text-decoration: none; color: orange;">
+                <div class="bookmark-name" style="color: orange;">${restaurant.name}</div>
+              </a>
+              <button class="bookmark-delete" onclick="deleteBookmark(${bookmarkId}, this)">✕</button>
+            </div>
+            <div class="bookmark-meta">
+              <span class="bookmark-address">${restaurant.address || ''}</span>
+            </div>
+          `;
+          bookmarksList.appendChild(item);
+        });
+      })
+      .catch(error => {
+        console.error('Error:', error.message);
+        bookmarksList.innerHTML = '<div class="no-favorites">Error loading favorites</div>';
+      });
+  }
+
+  // Initial load
+  document.addEventListener('DOMContentLoaded', loadBookmarks);
+</script>

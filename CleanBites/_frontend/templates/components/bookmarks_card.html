@@ -1,0 +1,106 @@
+<div class="card">
+    <div class="card-body" id="profile-card">
+      <h2>Bookmarked Restaurants</h2>
+      <div id="bookmarks-card-list">
+        <p class="text-muted">Loading bookmarks...</p>
+      </div>
+    </div>
+  </div>
+
+  <style>
+    .bookmark-delete {
+      background: none;
+      border: none;
+      font-size: 1rem;
+      color: #888;
+      cursor: pointer;
+      padding: 0;
+      margin-left: 10px;
+    }
+    
+    .bookmark-delete:hover {
+      color: #d9534f;
+    }
+  </style>
+  
+  <script>
+    document.addEventListener('DOMContentLoaded', function () {
+      fetch('/bookmarks/')
+        .then(response => {
+          if (!response.ok) {
+            return response.json().then(err => {
+              throw new Error(err.error || 'Request failed');
+            });
+          }
+          return response.json();
+        })
+        .then(data => {
+          const container = document.getElementById('bookmarks-card-list');
+          container.innerHTML = '';
+  
+          if (!data.restaurants || data.restaurants.length === 0) {
+            container.innerHTML = '<p class="text-muted mt-3">This user has not bookmarked any restaurants yet.</p>';
+            return;
+          }
+  
+          const bookmarkMap = {};
+          if (data.bookmarks) {
+            data.bookmarks.forEach(bookmark => {
+              bookmarkMap[bookmark.restaurant_id] = bookmark.id;
+            });
+          }
+  
+          const list = document.createElement('ul');
+          list.className = 'list-group list-group-flush';
+  
+          data.restaurants.forEach(restaurant => {
+            const bookmarkId = bookmarkMap[restaurant.id];
+  
+            const li = document.createElement('li');
+            li.className = 'bookmark-item list-group-item d-flex justify-content-between align-items-start';
+            li.innerHTML = `
+              <div class="ms-2 me-auto">
+                <div class="fw-bold">
+                  <a href="/restaurant/${restaurant.id}/" style="color: orange; text-decoration: none;">
+                    ${restaurant.name}
+                  </a>
+                </div>
+                <small class="text-muted">${restaurant.address || ''}</small>
+              </div>
+              <button class="btn btn-sm btn-outline-danger bookmark-delete" onclick="deleteBookmark(${bookmarkId}, this)">
+                ✕
+              </button>
+            `;
+            list.appendChild(li);
+          });
+  
+          container.appendChild(list);
+        })
+        .catch(error => {
+          console.error('Error:', error.message);
+          document.getElementById('bookmarks-card-list').innerHTML =
+            '<p class="text-muted">Error loading bookmarks.</p>';
+        });
+    });
+
+    function deleteBookmark(bookmarkId, buttonElement) {
+      fetch('/bookmarks/', {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ id: bookmarkId }),
+        credentials: 'include'  // still include cookies/session
+      })
+      .then(res => {
+        if (!res.ok) throw new Error("Failed to delete");
+        const item = buttonElement.closest('.bookmark-item');
+        if (item) item.remove();
+      })
+      .catch(err => {
+        console.error("Delete failed:", err);
+        alert("Failed to remove bookmark.");
+      });
+    }
+  </script>
+  

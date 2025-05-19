@@ -1,0 +1,22 @@
+services:
+  api:
+    build:
+      context: .
+      dockerfile: ./Dockerfile
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env
+    environment:
+      - API_HOST=api
+    networks:
+      - cleanbites-network
+    dns:
+      - 8.8.8.8
+      - 8.8.4.4
+    volumes:
+      - .:/app  # Mounts the entire project directory to /app in the container
+
+networks:
+  cleanbites-network:
+    driver: bridge
