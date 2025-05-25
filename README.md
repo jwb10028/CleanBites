@@ -1,76 +1,75 @@
-## Main Branch Status
-[![Build Status](https://app.travis-ci.com/gcivil-nyu-org/team5-wed-spring25.svg?token=67pxW7iTgPnDybRzkNKM&branch=main)](https://app.travis-ci.com/gcivil-nyu-org/team5-wed-spring25)
+![Alt text](./CleanBites/staticfiles/images/logo.png)
 
-[![Coverage Status](https://coveralls.io/repos/github/gcivil-nyu-org/team5-wed-spring25/badge.svg?branch=main&cache-control=no-cache)](https://coveralls.io/github/gcivil-nyu-org/team5-wed-spring25?branch=main)
+# NYC Restaurant Health Insights
 
-## Develop Branch Status
-[![Build Status](https://app.travis-ci.com/gcivil-nyu-org/team5-wed-spring25.svg?token=67pxW7iTgPnDybRzkNKM&branch=develop)](https://app.travis-ci.com/gcivil-nyu-org/team5-wed-spring25)
+A full-stack web application built with Django and Bootstrap that helps users discover local NYC restaurants and view detailed health inspection ratings, reviews, and other relevant data. Designed for real-time community interaction, the platform integrates map-based search, instant messaging, and moderation tools.
 
-[![Coverage Status](https://coveralls.io/repos/github/gcivil-nyu-org/team5-wed-spring25/badge.svg?branch=develop&cache-control=no-cache)](https://coveralls.io/github/gcivil-nyu-org/team5-wed-spring25?branch=develop)
+## 🌐 Live Features
 
-# CleanBites - Setup Guide
+- 🔍 **Health Rating Search**: Explore local NYC restaurants with up-to-date DOH inspection grades and violations.
+- 🗺️ **Geo-Search Interface**: Built with PostGIS and GDAL, enabling spatial queries and map visualizations.
+- 💬 **Instant Messaging**: Real-time chat between users using Django Channels and WebSockets (Daphne).
+- 👥 **Social Features**: Follow restaurants, comment on profiles, receive notifications.
+- 🔐 **Admin & Moderation Tools**: Full control panel for managing flagged content, user permissions, and audit logs.
+- 📊 **Advanced Filtering**: Query by cuisine type, borough, or health grade.
+- 🧪 **Unit & Integration Tests**: Comprehensive test suite ensures backend and frontend reliability.
 
-# 🛠 Running CleanBites with Docker
+## 🛠️ Tech Stack
 
-To containerize **CleanBites**, follow these steps.
+**Backend**
+- Django (async-enabled)
+- Django Channels (WebSocket support via Daphne)
+- PostgreSQL + PostGIS (geospatial querying)
+- GDAL/GEOS (GeoDjango support)
+- SSL/TLS (Let's Encrypt certificates)
+- Hosted via AWS Elastic Beanstalk (with EB CLI & containerized deployments)
 
-### 1️⃣ Build the Docker Image
+**Frontend**
+- Bootstrap 5 / HTML / CSS / JavaScript
+- Custom modals and responsive UI
+- AJAX & Fetch for dynamic content loading
 
-Run the following command to build the Docker image:
+**DevOps & Deployment**
+- AWS Elastic Beanstalk (staging + production environments)
+- Daphne ASGI server
+- HTTPS enabled via ACM/Let’s Encrypt
+- Static & media file management with `whitenoise` and S3-ready configuration
 
-```sh
-docker-compose build
+## 🚀 Local Development
+
+```bash
+git clone https://github.com/yourusername/nyc-restaurant-health.git
+cd nyc-restaurant-health
+python -m venv venv
+source venv/bin/activate
+pip install -r requirements.txt
+python manage.py migrate
+python manage.py runserver
 ```
+
+Ensure you have PostgreSQL and PostGIS installed locally. Set up `.env` for sensitive config values.
+
+## 🧪 Running Tests
+
+```bash
+python manage.py test
+```
+
+Includes unit and integration tests for views, models, websocket messaging, and moderation logic.
+
+## 🔒 Security Features
+
+- HTTPS enforced across all routes
+- CSRF & XSS protections enabled
+- Admin panel with user role differentiation (admin, moderator, user)
+- Rate-limiting and validation on form inputs
+
+## 🧭 Future Improvements
+
+- Docker-based deployment
+- Real-time health inspection updates via external APIs
+- Mobile-first UI overhaul with better accessibility support
+
 ---
 
-### 2️⃣ Start the Application in a Docker Container
-
-Run the application in a container:
-
-```sh
-docker-compose up -d
-```
-
-✅ This starts the backend API, which will be available at `http://localhost:8000`.
-
----
-
-### 3️⃣ Stopping the Container
-
-To stop the running container:
-
-```sh
-docker-compose down
-```
-
-✅ This shuts down the application while preserving any persistent data.
-
-
-
----
-
-# 🚀 Updating Docker Container After Repo Changes
-## ✅ Summary of Commands
-
-| **Change Type**                           | **Command** |
-|-------------------------------------------|-------------|
-| Code changes only (Python, HTML, JS, CSS) | `docker-compose down && docker-compose up -d` |
-| Dependency updates (`requirements.txt`)   | `docker-compose down && docker-compose build && docker-compose up -d` |
-| `Dockerfile` or `docker-compose.yml` changes | `docker-compose down && docker-compose up --build -d` |
-| Check logs                                | `docker-compose logs -f` |
-| Access running container                  | `docker-compose exec api bash` |
-
-
-
-
-## Notes
-
-- Ensure that your PostgreSQL instance (or AWS RDS database) is running and correctly configured.
-- The API is automatically exposed on **port 8000** inside the container.
-- If you encounter issues, check logs using:
-
-  ```sh
-  docker-compose logs -f
-  ```
-
-Enjoy using **CleanBites**! 🚀🎉
+Built with care as part of a semester-long full-stack project to bring transparency and community to NYC’s dining scene.
